@@ -1,0 +1,51 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug executable 'doom-rs'",
+			"stopOnEntry": false,
+			"sourceLanguages": [
+				"rust"
+			],
+			"sourceMap": {
+				"/rustc/9bc8c42bb2f19e745a63f3445f1ac248fb015e53": "${env:USERPROFILE}\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\lib\\rustlib\\src\\rust"
+			},
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=doom-rs",
+					"--package=doom-rs"
+				],
+				"filter": {
+					"name": "doom-rs",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug unit tests in executable 'doom-rs'",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run",
+					"--bin=doom-rs",
+					"--package=doom-rs"
+				],
+				"filter": {
+					"name": "doom-rs",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
