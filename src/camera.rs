@@ -1,29 +1,36 @@
 use crate::input::InputListener;
-use gl_matrix::common::to_radian;
-use glam::{EulerRot, Mat4, Quat, Vec3};
+use cgmath::{
+    num_traits::signum, Angle, Deg, Euler, InnerSpace, Matrix, Matrix3, Matrix4, One, Point3,
+    Quaternion, Rad, Rotation, Rotation3, Vector2, Vector3, Zero,
+};
 use glutin::event::VirtualKeyCode;
-use std::time::Instant;
+use std::{mem::ManuallyDrop, time::Instant};
 
 pub struct Camera {
-    pub persp: Mat4,
-    pub origin: Vec3,
-    pub direction: Quat,
-    movement: Vec3,
+    pub persp: Matrix4<f32>,
+    pub origin: Point3<f32>,
+    pub direction: Quaternion<f32>,
+    movement: Vector3<f32>,
     last_update: Instant,
+    yaw: Deg<f32>,
+    pitch: Deg<f32>,
 }
 
 impl Camera {
     pub fn new() -> Self {
-        let origin = Vec3::new(1280.0, 48.0, -3295.0);
-        let direction = Quat::IDENTITY;
+        let origin = Point3::new(-1280.0f32, 48.0f32, -3295.0f32);
+        let direction = Rotation::look_at(Vector3::unit_x(), Vector3::unit_y());
 
-        let persp = Mat4::perspective_lh(to_radian(45.0), 16.0 / 9.0, 10.0, 10000.0);
+        let persp = cgmath::perspective(Deg(45.0), 16.0 / 9.0, 10.0, 10000.0);
+
         Camera {
             persp,
             origin,
             direction,
-            movement: Vec3::ZERO,
+            movement: Vector3::zero(),
             last_update: Instant::now(),
+            yaw: Deg::zero(),
+            pitch: Deg::zero(),
         }
     }
     pub fn update(&mut self) {
@@ -32,7 +39,8 @@ impl Camera {
         self.last_update = now;
 
         let move_dir = self.direction * self.movement;
-        self.origin += move_dir * 256.0 * delta.as_secs_f32();
+        let move_speed_factor = 2.0;
+        self.origin += move_dir * 256.0 * delta.as_secs_f32() * move_speed_factor;
     }
 }
 
@@ -41,21 +49,34 @@ impl InputListener for Camera {
         match key {
             VirtualKeyCode::Z => self.movement.z = if pressed { 1.0 } else { 0.0 },
             VirtualKeyCode::S => self.movement.z = if pressed { -1.0 } else { 0.0 },
-            VirtualKeyCode::Q => self.movement.x = if pressed { -1.0 } else { 0.0 },
-            VirtualKeyCode::D => self.movement.x = if pressed { 1.0 } else { 0.0 },
+            VirtualKeyCode::Q => self.movement.x = if pressed { 1.0 } else { 0.0 },
+            VirtualKeyCode::D => self.movement.x = if pressed { -1.0 } else { 0.0 },
             VirtualKeyCode::Space => self.movement.y = if pressed { 1.0 } else { 0.0 },
             VirtualKeyCode::C => self.movement.y = if pressed { -1.0 } else { 0.0 },
 
             _ => (),
         }
-        self.movement = self.movement.normalize_or_zero();
+        if !self.movement.is_zero() {
+            self.movement = self.movement.normalize();
+        }
     }
 
     fn on_mouse_move(&mut self, delta: (f64, f64)) {
-        let delta = (to_radian(delta.0 as f32), to_radian(delta.1 as f32));
-        let mut euler = self.direction.to_euler(EulerRot::YXZ);
-        euler.0 += delta.0;
-        euler.1 += delta.1;
-        self.direction = Quat::from_euler(EulerRot::YXZ, euler.0, euler.1, euler.2);
+        let x_sensitivity = 0.75;
+        let y_sensitivity = 0.5;
+
+        self.yaw -= Deg(delta.0 as f32 * x_sensitivity);
+        self.pitch += Deg(delta.1 as f32 * y_sensitivity);
+
+        if self.pitch > Deg(88.0) {
+            self.pitch = Deg(88.0);
+        } else if self.pitch < Deg(-88.0) {
+            self.pitch = Deg(-88.0);
+        }
+
+        let quat_yaw: Quaternion<f32> = Rotation3::from_angle_y(self.yaw);
+        let quat_pitch: Quaternion<f32> = Rotation3::from_angle_x(self.pitch);
+
+        self.direction = quat_yaw * quat_pitch;
     }
 }

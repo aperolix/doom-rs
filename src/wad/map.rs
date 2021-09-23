@@ -13,7 +13,7 @@ use crate::{
 use super::file::WadFile;
 
 use bitflags::bitflags;
-use glam::{Mat4, Vec2, Vec3};
+use cgmath::{InnerSpace, Matrix4, Vector2, Vector3};
 
 bitflags! {
     struct LinedefFlags: i16 {
@@ -172,12 +172,10 @@ impl WadMap {
         let start = self.vertexes[line.0 as usize];
         let end = self.vertexes[line.1 as usize];
 
-        let line = Vec3::new(end.x as f32, 0.0, end.y as f32)
-            - Vec3::new(start.x as f32, 0.0, start.y as f32);
-        let length = line.length();
+        let line = Vector3::new(end.x as f32, end.y as f32, 0.0f32)
+            - Vector3::new(start.x as f32, start.y as f32, 0.0f32);
+        let length = line.magnitude();
         let line = line.normalize();
-
-        let cross = line.cross(Vec3::new(0.0, 1.0, 0.0));
 
         let uv_offset = (
             texture_offset.0 as f32 / texture_size.0 as f32,
@@ -186,33 +184,29 @@ impl WadMap {
 
         let mut quad_buffer = vec![
             GVertex {
-                pos: Vec3::new(start.x as f32, heights.0, start.y as f32),
-                normal: cross,
-                uv: Vec2::new(uv_offset.0, uv_offset.1),
+                pos: Vector3::new(-start.x as f32, heights.0, start.y as f32),
+                uv: Vector2::new(uv_offset.0, uv_offset.1),
                 light,
             },
             GVertex {
-                pos: Vec3::new(end.x as f32, heights.0, end.y as f32),
-                normal: cross,
-                uv: Vec2::new(
+                pos: Vector3::new(-end.x as f32, heights.0, end.y as f32),
+                uv: Vector2::new(
                     length / texture_size.0 as f32 + uv_offset.0,
-                    0.0 + uv_offset.1,
+                    0.0f32 + uv_offset.1,
                 ),
                 light,
             },
             GVertex {
-                pos: Vec3::new(start.x as f32, heights.1, start.y as f32),
-                normal: cross,
-                uv: Vec2::new(
+                pos: Vector3::new(-start.x as f32, heights.1, start.y as f32),
+                uv: Vector2::new(
                     uv_offset.0,
                     (heights.1 - heights.0) / texture_size.1 as f32 + uv_offset.1,
                 ),
                 light,
             },
             GVertex {
-                pos: Vec3::new(end.x as f32, heights.1, end.y as f32),
-                normal: cross,
-                uv: Vec2::new(
+                pos: Vector3::new(-end.x as f32, heights.1, end.y as f32),
+                uv: Vector2::new(
                     length / texture_size.0 as f32 + uv_offset.0,
                     (heights.1 - heights.0) / texture_size.1 as f32 + uv_offset.1,
                 ),
@@ -497,10 +491,10 @@ impl WadMap {
             self.gl.ClearColor(0.5, 0.0, 0.5, 1.0);
             self.gl.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-            let view = Mat4::look_at_lh(
+            let view = Matrix4::look_at_rh(
                 camera.origin,
-                camera.origin + camera.direction * Vec3::new(0.0, 0.0, 1.0),
-                Vec3::new(0.0, 1.0, 0.0),
+                camera.origin + camera.direction * Vector3::unit_z(),
+                Vector3::unit_y(),
             );
 
             for s in &self.model_sectors {

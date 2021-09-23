@@ -1,4 +1,4 @@
-use glam::Mat4;
+use cgmath::{BaseNum, Matrix4};
 
 use super::{doom_gl::gl, material::Material};
 
@@ -9,11 +9,22 @@ pub struct SectorModel {
     view_att: i32,
     persp_att: i32,
     pos_att: i32,
-    norm_att: i32,
     uv_att: i32,
     light_att: i32,
     img_att: i32,
     texture: u32,
+}
+
+pub trait ToArr {
+    type Output;
+    fn to_arr(&self) -> Self::Output;
+}
+
+impl<T: BaseNum> ToArr for Matrix4<T> {
+    type Output = [[T; 4]; 4];
+    fn to_arr(&self) -> Self::Output {
+        (*self).into()
+    }
 }
 
 impl SectorModel {
@@ -22,7 +33,6 @@ impl SectorModel {
 
         let mut ib = unsafe { std::mem::zeroed() };
         let pos_att = wall_material.get_attrib_location(gl, "position\0");
-        let norm_att = wall_material.get_attrib_location(gl, "normal\0");
         let uv_att = wall_material.get_attrib_location(gl, "uv\0");
         let light_att = wall_material.get_attrib_location(gl, "light\0");
         let view_att = wall_material.get_uniform_location(gl, "view\0");
@@ -45,25 +55,17 @@ impl SectorModel {
                 3,
                 gl::FLOAT,
                 0,
-                (9 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
+                (6 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
                 std::ptr::null(),
             );
             assert!(gl.GetError() == 0);
-            gl.VertexAttribPointer(
-                norm_att as gl::types::GLuint,
-                3,
-                gl::FLOAT,
-                0,
-                (9 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
-                (3 * std::mem::size_of::<f32>()) as *const () as *const _,
-            );
             gl.VertexAttribPointer(
                 uv_att as gl::types::GLuint,
                 2,
                 gl::FLOAT,
                 0,
-                (9 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
-                (6 * std::mem::size_of::<f32>()) as *const () as *const _,
+                (6 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
+                (3 * std::mem::size_of::<f32>()) as *const () as *const _,
             );
             assert!(gl.GetError() == 0);
             gl.VertexAttribPointer(
@@ -71,8 +73,8 @@ impl SectorModel {
                 1,
                 gl::FLOAT,
                 0,
-                (9 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
-                (8 * std::mem::size_of::<f32>()) as *const () as *const _,
+                (6 * std::mem::size_of::<f32>()) as gl::types::GLsizei,
+                (5 * std::mem::size_of::<f32>()) as *const () as *const _,
             );
             assert!(gl.GetError() == 0);
         }
@@ -84,7 +86,6 @@ impl SectorModel {
             view_att,
             persp_att,
             pos_att,
-            norm_att,
             uv_att,
             light_att,
             img_att,
@@ -92,22 +93,30 @@ impl SectorModel {
         }
     }
 
-    pub fn render(&self, view: &Mat4, persp: &Mat4, gl: &gl::Gl) {
+    pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>, gl: &gl::Gl) {
         unsafe {
             self.wall_material.bind(gl);
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.pos_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
-            gl.EnableVertexAttribArray(self.norm_att as gl::types::GLuint);
-            assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.uv_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.light_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
-            gl.UniformMatrix4fv(self.view_att, 1, gl::FALSE, view.as_ref() as *const _);
+            gl.UniformMatrix4fv(
+                self.view_att,
+                1,
+                gl::FALSE,
+                view.to_arr().as_ptr() as *const _,
+            );
             assert!(gl.GetError() == 0);
-            gl.UniformMatrix4fv(self.persp_att, 1, gl::FALSE, persp.as_ref() as *const _);
+            gl.UniformMatrix4fv(
+                self.persp_att,
+                1,
+                gl::FALSE,
+                persp.to_arr().as_ptr() as *const _,
+            );
             assert!(gl.GetError() == 0);
             gl.Uniform1i(self.img_att, 0);
             assert!(gl.GetError() == 0);

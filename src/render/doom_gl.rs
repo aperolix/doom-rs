@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3};
+use cgmath::{Vector2, Vector3};
 use glutin::{self, PossiblyCurrent};
 
 pub mod gl {
@@ -9,9 +9,8 @@ pub mod gl {
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct GVertex {
-    pub pos: Vec3,
-    pub normal: Vec3,
-    pub uv: Vec2,
+    pub pos: Vector3<f32>,
+    pub uv: Vector2<f32>,
     pub light: f32,
 }
 

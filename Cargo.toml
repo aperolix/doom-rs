@@ -9,8 +9,7 @@ build = "build.rs"
 
 [dependencies]
 glutin="0.27.0"
-gl_matrix="0.0"
-glam="0.18"
+cgmath="0.18"
 rand="0.8"
 bitflags="1.3"
 
