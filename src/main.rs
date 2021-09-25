@@ -54,6 +54,8 @@ fn main() {
     input.listeners.push(camera.clone());
 
     let mut focus = true;
+    windowed_context.window().set_cursor_grab(true).unwrap();
+    windowed_context.window().set_cursor_visible(false);
 
     el.run(move |event, _, control_flow| {
         //println!("{:?}", event);
@@ -64,6 +66,8 @@ fn main() {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::Focused(f) => {
                     focus = f;
+                    windowed_context.window().set_cursor_grab(focus).unwrap();
+                    windowed_context.window().set_cursor_visible(!focus);
                 }
                 WindowEvent::Resized(physical_size) => windowed_context.resize(physical_size),
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,

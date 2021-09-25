@@ -14,6 +14,7 @@ pub struct Camera {
     last_update: Instant,
     yaw: Deg<f32>,
     pitch: Deg<f32>,
+    last_delta: Vector2<f32>,
 }
 
 impl Camera {
@@ -31,6 +32,7 @@ impl Camera {
             last_update: Instant::now(),
             yaw: Deg::zero(),
             pitch: Deg::zero(),
+            last_delta: Vector2::zero(),
         }
     }
     pub fn update(&mut self) {
@@ -62,11 +64,15 @@ impl InputListener for Camera {
     }
 
     fn on_mouse_move(&mut self, delta: (f64, f64)) {
-        let x_sensitivity = 0.75;
-        let y_sensitivity = 0.5;
+        let x_sensitivity = 0.5;
+        let y_sensitivity = 0.35;
 
-        self.yaw -= Deg(delta.0 as f32 * x_sensitivity);
-        self.pitch += Deg(delta.1 as f32 * y_sensitivity);
+        let delta = Vector2::new(delta.0 as f32, delta.1 as f32);
+        let smoothed = (self.last_delta + delta) / 2.0;
+        self.last_delta = delta;
+
+        self.yaw -= Deg(smoothed.x as f32 * x_sensitivity);
+        self.pitch += Deg(smoothed.y as f32 * y_sensitivity);
 
         if self.pitch > Deg(88.0) {
             self.pitch = Deg(88.0);
