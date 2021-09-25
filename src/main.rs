@@ -32,13 +32,11 @@ fn main() {
 
     unsafe {
         gl.gl.Enable(gl::CULL_FACE);
-        assert!(gl.gl.GetError() == 0);
         gl.gl.Enable(gl::DEPTH_TEST);
-        assert!(gl.gl.GetError() == 0);
         gl.gl.DepthFunc(gl::LESS);
-        assert!(gl.gl.GetError() == 0);
         gl.gl.FrontFace(gl::CCW);
-        assert!(gl.gl.GetError() == 0);
+        gl.gl.Enable(gl::BLEND);
+        gl.gl.BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
         //gl.gl.Disable(gl::CULL_FACE);
         //gl.gl.PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
     }

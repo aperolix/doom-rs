@@ -176,10 +176,10 @@ impl WadFile {
         if self.reader.read_exact(&mut buffer).is_ok() {
             let (_, header, _) = unsafe { buffer.align_to::<PatchHeader>() };
 
-            image.resize(header[0].width as usize * header[0].height as usize, 0u8);
+            image.resize(header[0].width as usize * header[0].height as usize, 247u8);
 
             let mut buffer = Vec::new();
-            buffer.resize(mem::size_of::<i32>() * header[0].width as usize, 0u8);
+            buffer.resize(mem::size_of::<i32>() * header[0].width as usize, 247u8);
             if self.reader.read_exact(&mut buffer).is_ok() {
                 let (_, columns, _) = unsafe { buffer.align_to::<i32>() };
 
@@ -258,6 +258,7 @@ impl WadFile {
                             mem::size_of::<MapPatch>() * map_texture[0].patch_count as usize,
                             0u8,
                         );
+
                         if self.reader.read_exact(&mut buffer).is_ok() {
                             let (_, patches, _) = unsafe { buffer.align_to::<MapPatch>() };
 
@@ -287,20 +288,20 @@ impl WadFile {
                                             let palette_idx = patch.image
                                                 [y as usize * patch_width as usize + x as usize];
 
-                                            /*if palette_idx == 247 {
-                                                texture_buffer[index as usize] = 0u8;
+                                            if palette_idx == 247 {
+                                                texture_buffer[index as usize] = 255u8;
                                                 texture_buffer[index as usize + 1] = 0u8;
-                                                texture_buffer[index as usize + 2] = 0u8;
+                                                texture_buffer[index as usize + 2] = 255u8;
                                                 texture_buffer[index as usize + 3] = 0u8;
-                                            } else {*/
-                                            let color =
-                                                self.playpal[0_usize].colors[palette_idx as usize];
+                                            } else {
+                                                let color = self.playpal[0_usize].colors
+                                                    [palette_idx as usize];
 
-                                            texture_buffer[index as usize] = color.r;
-                                            texture_buffer[index as usize + 1] = color.g;
-                                            texture_buffer[index as usize + 2] = color.b;
-                                            texture_buffer[index as usize + 3] = 255u8;
-                                            //}
+                                                texture_buffer[index as usize] = color.r;
+                                                texture_buffer[index as usize + 1] = color.g;
+                                                texture_buffer[index as usize + 2] = color.b;
+                                                texture_buffer[index as usize + 3] = 255u8;
+                                            }
                                         }
                                     }
                                 }
