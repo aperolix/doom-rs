@@ -175,7 +175,6 @@ impl WadMap {
         let line = Vector3::new(end.x as f32, end.y as f32, 0.0f32)
             - Vector3::new(start.x as f32, start.y as f32, 0.0f32);
         let length = line.magnitude();
-        let line = line.normalize();
 
         let uv_offset = (
             texture_offset.0 as f32 / texture_size.0 as f32,

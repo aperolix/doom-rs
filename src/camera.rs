@@ -1,10 +1,9 @@
 use crate::input::InputListener;
 use cgmath::{
-    num_traits::signum, Angle, Deg, Euler, InnerSpace, Matrix, Matrix3, Matrix4, One, Point3,
-    Quaternion, Rad, Rotation, Rotation3, Vector2, Vector3, Zero,
+    Deg, InnerSpace, Matrix4, Point3, Quaternion, Rotation, Rotation3, Vector2, Vector3, Zero,
 };
 use glutin::event::VirtualKeyCode;
-use std::{mem::ManuallyDrop, time::Instant};
+use std::time::Instant;
 
 pub struct Camera {
     pub persp: Matrix4<f32>,
