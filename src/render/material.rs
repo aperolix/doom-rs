@@ -2,7 +2,6 @@ use super::doom_gl::gl;
 use std::io::Read;
 use std::{fs::File, path::Path};
 
-#[allow(dead_code)]
 pub struct Material {
     vs: u32,
     fs: u32,

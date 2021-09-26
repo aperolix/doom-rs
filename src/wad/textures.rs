@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
+use crate::render::doom_gl::DoomGl;
+
 use super::{file::WadFile, patches::Patches};
 
 pub struct Texture {
     pub width: usize,
     pub height: usize,
-    pub image: Vec<u8>,
+    pub id: u32,
 }
 
 pub struct Textures {
@@ -14,6 +16,7 @@ pub struct Textures {
 
 fn read_texture_section(
     file: &WadFile,
+    gl: &DoomGl,
     section: &str,
     patches: &Patches,
 ) -> HashMap<String, Texture> {
@@ -54,16 +57,16 @@ fn read_texture_section(
             // Get the texture header
             let (_, texture_info, _) = unsafe { section[offset..].align_to::<TextureInfo>() };
 
+            let width = texture_info[0].width as usize;
+            let height = texture_info[0].height as usize;
+
             // Get the patch table
             let offset = offset + std::mem::size_of::<TextureInfo>();
             let (_, patch_info, _) = unsafe { section[offset..].align_to::<PatchInfo>() };
 
             // Compose texture
             let mut buffer = Vec::new();
-            buffer.resize(
-                4 * texture_info[0].width as usize * texture_info[0].height as usize,
-                0u8,
-            );
+            buffer.resize(4 * width as usize * height as usize, 0u8);
             for pinfo in patch_info.iter().take(texture_info[0].patch_count as usize) {
                 let patch = patches.get_patch(pinfo.patch as usize);
 
@@ -86,14 +89,11 @@ fn read_texture_section(
                 }
             }
 
-            result.insert(
-                String::from_utf8(texture_info[0].name.to_ascii_uppercase().to_vec()).unwrap(),
-                Texture {
-                    width: texture_info[0].width as usize,
-                    height: texture_info[0].height as usize,
-                    image: buffer,
-                },
-            );
+            let name =
+                String::from_utf8(texture_info[0].name.to_ascii_uppercase().to_vec()).unwrap();
+            let id = gl.create_texture(&buffer, width as i32, height as i32);
+
+            result.insert(name, Texture { width, height, id });
         }
     }
 
@@ -101,13 +101,13 @@ fn read_texture_section(
 }
 
 impl Textures {
-    pub fn new(file: &WadFile) -> Self {
+    pub fn new(file: &WadFile, gl: &DoomGl) -> Self {
         // First read the patches
         let patches = Patches::new(file);
 
         // Read the TEXTUREX
-        let mut list = read_texture_section(file, "TEXTURE1", &patches);
-        list.extend(read_texture_section(file, "TEXTURE2", &patches));
+        let mut list = read_texture_section(file, gl, "TEXTURE1", &patches);
+        list.extend(read_texture_section(file, gl, "TEXTURE2", &patches));
 
         Textures { list }
     }

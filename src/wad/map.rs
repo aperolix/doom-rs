@@ -6,11 +6,11 @@ use crate::{
     render::{
         doom_gl::{gl, GVertex},
         sector::SectorModel,
-        textures::{Texture, Textures},
     },
 };
 
-use super::{content::Content, file::WadFile};
+use super::{file::WadFile, textures::Texture};
+use crate::sys::content::Content;
 
 use bitflags::bitflags;
 use cgmath::{InnerSpace, Matrix4, Vector2, Vector3};
@@ -149,8 +149,6 @@ pub struct WadMap {
 
     model_sectors: Vec<SectorModel>,
 
-    textures: Textures,
-
     gl: gl::Gl,
 }
 
@@ -165,8 +163,8 @@ impl WadMap {
         material: &mut PerMaterial,
         line: (u16, u16),
         heights: (f32, f32),
-        texture_size: (i32, i32),
-        texture_offset: (i16, i16),
+        texture_size: (f32, f32),
+        texture_offset: (f32, f32),
         light: f32,
     ) {
         let start = self.vertexes[line.0 as usize];
@@ -177,8 +175,8 @@ impl WadMap {
         let length = line.magnitude();
 
         let uv_offset = (
-            texture_offset.0 as f32 / texture_size.0 as f32,
-            texture_offset.1 as f32 / texture_size.1 as f32,
+            texture_offset.0 / texture_size.0,
+            texture_offset.1 / texture_size.1,
         );
 
         let mut quad_buffer = vec![
@@ -189,25 +187,22 @@ impl WadMap {
             },
             GVertex {
                 pos: Vector3::new(-end.x as f32, heights.0, end.y as f32),
-                uv: Vector2::new(
-                    length / texture_size.0 as f32 + uv_offset.0,
-                    0.0f32 + uv_offset.1,
-                ),
+                uv: Vector2::new(length / texture_size.0 + uv_offset.0, 0.0f32 + uv_offset.1),
                 light,
             },
             GVertex {
                 pos: Vector3::new(-start.x as f32, heights.1, start.y as f32),
                 uv: Vector2::new(
                     uv_offset.0,
-                    (heights.1 - heights.0) / texture_size.1 as f32 + uv_offset.1,
+                    (heights.1 - heights.0) / texture_size.1 + uv_offset.1,
                 ),
                 light,
             },
             GVertex {
                 pos: Vector3::new(-end.x as f32, heights.1, end.y as f32),
                 uv: Vector2::new(
-                    length / texture_size.0 as f32 + uv_offset.0,
-                    (heights.1 - heights.0) / texture_size.1 as f32 + uv_offset.1,
+                    length / texture_size.0 + uv_offset.0,
+                    (heights.1 - heights.0) / texture_size.1 + uv_offset.1,
                 ),
                 light,
             },
@@ -226,19 +221,6 @@ impl WadMap {
         ]);
     }
 
-    fn get_texture(&self, texture_name: [u8; 8]) -> Option<&Texture> {
-        if texture_name[0] != b'-' {
-            if let Some(texture) = self
-                .textures
-                .textures
-                .get(&String::from_utf8(texture_name.to_ascii_uppercase().to_vec()).unwrap())
-            {
-                return Some(texture);
-            }
-        }
-        None
-    }
-
     fn prepare_line_render(
         &self,
         per_material: &mut HashMap<u32, PerMaterial>,
@@ -246,7 +228,7 @@ impl WadMap {
         texture: &Texture,
         line: (u16, u16),
         heights: (f32, f32),
-        texture_offset: (i16, i16),
+        texture_offset: (f32, f32),
         light: f32,
     ) {
         let material = if let Some(m) = per_material.get_mut(&texture.id) {
@@ -267,13 +249,13 @@ impl WadMap {
             material,
             line,
             heights,
-            (texture.width, texture.height),
+            (texture.width as f32, texture.height as f32),
             texture_offset,
             light,
         );
     }
 
-    pub fn prepare_render(&self) -> (HashMap<u32, PerMaterial>, Vec<GVertex>) {
+    pub fn prepare_render(&self, content: &Content) -> (HashMap<u32, PerMaterial>, Vec<GVertex>) {
         let mut vbuffer = Vec::new();
 
         let mut per_material = HashMap::new();
@@ -321,14 +303,16 @@ impl WadMap {
             }
 
             let line = (l.start_vertex, l.end_vertex);
-            let texture_offset = (front_side.x_offset, -front_side.y_offset);
+            let texture_offset = (front_side.x_offset as f32, -front_side.y_offset as f32);
 
             // low
-            if let Some(texture) = self.get_texture(front_side.lower_tex) {
+            if let Some(texture) = content.get_texture(
+                &String::from_utf8(front_side.lower_tex.to_ascii_uppercase().to_vec()).unwrap(),
+            ) {
                 let line_offset;
                 if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) != LinedefFlags::NONE {
                     let off = (wall_extent.1 - wall_extent.0) / texture.height as f32;
-                    let off = ((1.0 - off % 1.0) * texture.height as f32) as i16;
+                    let off = (1.0 - off % 1.0) * texture.height as f32;
                     line_offset = (texture_offset.0, texture_offset.1 + off);
                 } else {
                     line_offset = texture_offset;
@@ -346,11 +330,13 @@ impl WadMap {
             }
 
             // mid
-            if let Some(texture) = self.get_texture(front_side.middle_tex) {
+            if let Some(texture) = content.get_texture(
+                &String::from_utf8(front_side.middle_tex.to_ascii_uppercase().to_vec()).unwrap(),
+            ) {
                 let line_offset;
                 if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) == LinedefFlags::NONE {
                     let off = (back_ceil - back_floor) / texture.height as f32;
-                    let off = ((1.0 - off % 1.0) * texture.height as f32) as i16;
+                    let off = (1.0 - off % 1.0) * texture.height as f32;
                     line_offset = (texture_offset.0, texture_offset.1 + off);
                 } else {
                     line_offset = texture_offset;
@@ -367,11 +353,13 @@ impl WadMap {
             }
 
             // upper
-            if let Some(texture) = self.get_texture(front_side.upper_tex) {
+            if let Some(texture) = content.get_texture(
+                &String::from_utf8(front_side.upper_tex.to_ascii_uppercase().to_vec()).unwrap(),
+            ) {
                 let line_offset;
                 if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
                     let off = (front_ceil - back_ceil) / texture.height as f32;
-                    let off = ((1.0 - off % 1.0) * texture.height as f32) as i16;
+                    let off = (1.0 - off % 1.0) * texture.height as f32;
                     line_offset = (texture_offset.0, texture_offset.1 + off);
                 } else {
                     line_offset = texture_offset;
@@ -391,13 +379,15 @@ impl WadMap {
             let line = (l.end_vertex, l.start_vertex);
 
             if let Some(b) = back_side {
-                let texture_offset = (b.x_offset, b.y_offset);
+                let texture_offset = (b.x_offset as f32, b.y_offset as f32);
                 // low
-                if let Some(texture) = self.get_texture(b.lower_tex) {
+                if let Some(texture) = content.get_texture(
+                    &String::from_utf8(b.lower_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                ) {
                     let line_offset;
                     if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) != LinedefFlags::NONE {
                         let off = (wall_extent.0 - wall_extent.1) / texture.height as f32;
-                        let off = ((1.0 - off % 1.0) * texture.height as f32) as i16;
+                        let off = (1.0 - off % 1.0) * texture.height as f32;
                         line_offset = (texture_offset.0, texture_offset.1 + off);
                     } else {
                         line_offset = texture_offset;
@@ -415,11 +405,13 @@ impl WadMap {
                 }
 
                 // mid
-                if let Some(texture) = self.get_texture(b.middle_tex) {
+                if let Some(texture) = content.get_texture(
+                    &String::from_utf8(b.middle_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                ) {
                     let line_offset;
                     if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) == LinedefFlags::NONE {
                         let off = (back_ceil - back_floor) / texture.height as f32;
-                        let off = ((1.0 - off % 1.0) * texture.height as f32) as i16;
+                        let off = (1.0 - off % 1.0) * texture.height as f32;
                         line_offset = (texture_offset.0, texture_offset.1 + off);
                     } else {
                         line_offset = texture_offset;
@@ -436,11 +428,13 @@ impl WadMap {
                 }
 
                 // upper
-                if let Some(texture) = self.get_texture(b.upper_tex) {
+                if let Some(texture) = content.get_texture(
+                    &String::from_utf8(b.upper_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                ) {
                     let line_offset;
                     if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
                         let off = (back_ceil - front_ceil) / texture.height as f32;
-                        let off = ((1.0 - off % 1.0) * texture.height as f32) as i16;
+                        let off = (1.0 - off % 1.0) * texture.height as f32;
                         line_offset = (texture_offset.0, texture_offset.1 + off);
                     } else {
                         line_offset = texture_offset;
@@ -502,12 +496,7 @@ impl WadMap {
         }
     }
 
-    pub fn load_map(
-        name: &str,
-        mut wad: WadFile,
-        content: Content,
-        gl: gl::Gl,
-    ) -> Result<WadMap, String> {
+    pub fn load_map(name: &str, mut wad: WadFile, gl: gl::Gl) -> Result<WadMap, String> {
         let mapidx = match wad.directory.find_section(name, 0) {
             Some(i) => i,
             None => return Err("Map not found".to_string()),
@@ -521,8 +510,6 @@ impl WadMap {
         let ssectors = wad.read_section(mapidx, "SSECTORS");
         let nodes = wad.read_section(mapidx, "NODES");
 
-        wad.read_textures(content, &gl);
-
         Ok(WadMap {
             linedefs,
             sidedefs,
@@ -534,7 +521,6 @@ impl WadMap {
             vbuffer: Vec::new(),
             wall_ibuffer: Vec::new(),
             model_sectors: Vec::new(),
-            textures: wad.textures,
             gl,
         })
     }

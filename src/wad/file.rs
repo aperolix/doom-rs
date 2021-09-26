@@ -1,17 +1,12 @@
-use crate::render::doom_gl::gl;
-use crate::render::textures::Textures;
-
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::mem;
 use std::{fs::File, path::Path};
 
-use super::content::Content;
 use super::directory::WadDirectory;
 
 pub struct WadFile {
     pub directory: WadDirectory,
     pub reader: BufReader<File>,
-    pub textures: Textures,
     content: Vec<u8>,
 }
 
@@ -29,7 +24,6 @@ impl WadFile {
         Ok(WadFile {
             directory: WadDirectory::new(&content),
             reader,
-            textures: Textures::new(),
             content,
         })
     }
@@ -61,17 +55,5 @@ impl WadFile {
             }
         }
         result
-    }
-
-    pub fn read_textures(&mut self, content: Content, gl: &gl::Gl) {
-        for texture in content.textures.list {
-            self.textures.load_texture(
-                gl,
-                texture.0.as_str(),
-                &texture.1.image,
-                texture.1.width as i32,
-                texture.1.height as i32,
-            )
-        }
     }
 }

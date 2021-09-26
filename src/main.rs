@@ -1,6 +1,7 @@
 mod camera;
 mod input;
 mod render;
+mod sys;
 mod wad;
 use camera::Camera;
 use glutin::{
@@ -11,12 +12,11 @@ use glutin::{
     ContextBuilder,
 };
 use input::Input;
-use render::doom_gl::gl;
 use render::doom_gl::DoomGl;
 use std::{cell::RefCell, path::Path, rc::Rc};
 
-use wad::content::Content;
-use wad::content::WadFile;
+use sys::content::Content;
+use wad::file::WadFile;
 use wad::map::WadMap;
 
 fn main() {
@@ -28,26 +28,16 @@ fn main() {
         .with_title("DOOM");
     let windowed_context = ContextBuilder::new().build_windowed(wb, &el).unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
-    let gl = DoomGl::init(windowed_context.context());
+    let gl = DoomGl::new(windowed_context.context());
     let mut input = Input::new();
 
-    unsafe {
-        gl.gl.Enable(gl::CULL_FACE);
-        gl.gl.Enable(gl::DEPTH_TEST);
-        gl.gl.DepthFunc(gl::LESS);
-        gl.gl.FrontFace(gl::CCW);
-        gl.gl.Enable(gl::BLEND);
-        gl.gl.BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-        //gl.gl.Disable(gl::CULL_FACE);
-        //gl.gl.PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-    }
-
     let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
-    let content = Content::new(&file);
 
-    let mut map = WadMap::load_map("E1M1", file, content, gl.gl).unwrap();
+    let content = Content::new(&file, &gl);
 
-    map.prepare_render_finalize(map.prepare_render());
+    let mut map = WadMap::load_map("E1M1", file, gl.gl).unwrap();
+
+    map.prepare_render_finalize(map.prepare_render(&content));
 
     let camera = Rc::new(RefCell::new(Camera::new()));
 

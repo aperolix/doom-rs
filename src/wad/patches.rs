@@ -1,5 +1,5 @@
 use super::{
-    content::WadFile,
+    file::WadFile,
     playpal::{Palette, PlayPal},
 };
 

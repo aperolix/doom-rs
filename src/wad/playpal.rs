@@ -1,4 +1,4 @@
-use super::content::WadFile;
+use super::file::WadFile;
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
