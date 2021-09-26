@@ -66,7 +66,7 @@ fn read_texture_section(
 
             // Compose texture
             let mut buffer = Vec::new();
-            buffer.resize(4 * width as usize * height as usize, 0u8);
+            buffer.resize(4 * width as usize * height as usize, 1u8);
             for pinfo in patch_info.iter().take(texture_info[0].patch_count as usize) {
                 let patch = patches.get_patch(pinfo.patch as usize);
 
@@ -80,10 +80,20 @@ fn read_texture_section(
                         if index >= 0 && index < buffer.len() as i32 {
                             let patch_index = (y as usize * patch.width + x as usize) * 4;
 
-                            buffer[index as usize] = patch.image[patch_index];
-                            buffer[index as usize + 1] = patch.image[patch_index + 1];
-                            buffer[index as usize + 2] = patch.image[patch_index + 2];
-                            buffer[index as usize + 3] = patch.image[patch_index + 3];
+                            let dest_alpha = buffer[index as usize + 3];
+                            let src_alpha = patch.image[patch_index + 3];
+
+                            if src_alpha == 0 {
+                                // Don't rewrite above existing color
+                                if dest_alpha <= 1u8 {
+                                    buffer[index as usize + 3] = src_alpha;
+                                }
+                            } else {
+                                buffer[index as usize] = patch.image[patch_index];
+                                buffer[index as usize + 1] = patch.image[patch_index + 1];
+                                buffer[index as usize + 2] = patch.image[patch_index + 2];
+                                buffer[index as usize + 3] = 255u8;
+                            }
                         }
                     }
                 }
