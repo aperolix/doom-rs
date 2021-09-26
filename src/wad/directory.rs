@@ -1,8 +1,6 @@
-use std::io::{Seek, SeekFrom};
-use std::{io::BufRead, mem};
+use std::ops::Range;
 
 use super::info::WadInfo;
-
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct FileLump {
@@ -11,32 +9,37 @@ pub struct FileLump {
     pub name: [u8; 8],
 }
 
+impl FileLump {
+    pub fn range(&self) -> Range<usize> {
+        Range {
+            start: self.file_pos as usize,
+            end: self.file_pos as usize + self.size as usize,
+        }
+    }
+}
+
 pub struct WadDirectory {
     pub files: Vec<FileLump>,
 }
 
 impl WadDirectory {
-    pub fn new<T: BufRead + Seek>(info: &WadInfo, reader: &mut T) -> Result<Self, String> {
-        if let Err(e) = reader.seek(SeekFrom::Start(info.into_table_ofs as u64)) {
-            return Err(e.to_string());
-        }
+    pub fn new(content: &[u8]) -> Self {
+        let info = WadInfo::new(content);
 
-        let mut directory = WadDirectory { files: Vec::new() };
+        let mut directory = WadDirectory {
+            files: Vec::with_capacity(info.num_lumps as usize),
+        };
 
-        for _ in 0..info.num_lumps {
-            let mut buffer: [u8; mem::size_of::<FileLump>()] = [0; mem::size_of::<FileLump>()];
-            match reader.read_exact(&mut buffer) {
-                Ok(_) => {
-                    let (head, body, _tail) = unsafe { buffer.align_to::<FileLump>() };
-                    assert!(head.is_empty(), "Data was not aligned");
-                    let file_lump = body[0];
-                    directory.files.push(file_lump);
-                }
-                Err(e) => return Err(e.to_string()),
-            }
-        }
+        let offset = info.into_table_ofs as usize;
 
-        Ok(directory)
+        let body = unsafe {
+            directory.files.set_len(info.num_lumps as usize);
+            let (_head, body, _tail) = content[offset..].align_to::<FileLump>();
+            body
+        };
+        directory.files.copy_from_slice(body);
+
+        directory
     }
 
     pub fn find_section(&self, name: &str, from_index: usize) -> Option<usize> {
@@ -50,5 +53,9 @@ impl WadDirectory {
             }
         }
         None
+    }
+
+    pub fn get_lump(&self, index: usize) -> &FileLump {
+        &self.files[index]
     }
 }

@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-use super::file::WadFile;
+use super::{content::Content, file::WadFile};
 
 use bitflags::bitflags;
 use cgmath::{InnerSpace, Matrix4, Vector2, Vector3};
@@ -502,7 +502,12 @@ impl WadMap {
         }
     }
 
-    pub fn load_map(name: &str, mut wad: WadFile, gl: gl::Gl) -> Result<WadMap, String> {
+    pub fn load_map(
+        name: &str,
+        mut wad: WadFile,
+        content: Content,
+        gl: gl::Gl,
+    ) -> Result<WadMap, String> {
         let mapidx = match wad.directory.find_section(name, 0) {
             Some(i) => i,
             None => return Err("Map not found".to_string()),
@@ -515,10 +520,8 @@ impl WadMap {
         let sectors = wad.read_section(mapidx, "SECTORS");
         let ssectors = wad.read_section(mapidx, "SSECTORS");
         let nodes = wad.read_section(mapidx, "NODES");
-        wad.read_playpal();
-        wad.read_pnames();
-        wad.read_textures("TEXTURE1", &gl);
-        wad.read_textures("TEXTURE2", &gl);
+
+        wad.read_textures(content, &gl);
 
         Ok(WadMap {
             linedefs,

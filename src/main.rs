@@ -15,7 +15,8 @@ use render::doom_gl::gl;
 use render::doom_gl::DoomGl;
 use std::{cell::RefCell, path::Path, rc::Rc};
 
-use wad::file::WadFile;
+use wad::content::Content;
+use wad::content::WadFile;
 use wad::map::WadMap;
 
 fn main() {
@@ -42,8 +43,9 @@ fn main() {
     }
 
     let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
+    let content = Content::new(&file);
 
-    let mut map = WadMap::load_map("E1M1", file, gl.gl).unwrap();
+    let mut map = WadMap::load_map("E1M1", file, content, gl.gl).unwrap();
 
     map.prepare_render_finalize(map.prepare_render());
 

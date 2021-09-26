@@ -1,4 +1,8 @@
+pub mod content;
 mod directory;
-pub mod file;
+mod file;
 mod info;
 pub mod map;
+mod patches;
+mod playpal;
+mod textures;
