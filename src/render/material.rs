@@ -1,4 +1,4 @@
-use super::doom_gl::gl;
+use super::doom_gl::{gl, DoomGl};
 use std::io::Read;
 use std::{fs::File, path::Path};
 
@@ -8,7 +8,7 @@ pub struct Material {
     program: u32,
 }
 
-pub fn create_shader(gl: &gl::Gl, name: &Path, shader_type: gl::types::GLenum) -> u32 {
+pub fn create_shader(name: &Path, shader_type: gl::types::GLenum) -> u32 {
     let mut file = File::open(name).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
@@ -17,6 +17,7 @@ pub fn create_shader(gl: &gl::Gl, name: &Path, shader_type: gl::types::GLenum) -
 
     let vs;
     unsafe {
+        let gl = DoomGl::gl();
         vs = gl.CreateShader(shader_type);
         gl.ShaderSource(vs, 1, [content.as_ptr() as *const _].as_ptr(), &length);
         gl.CompileShader(vs);
@@ -36,10 +37,11 @@ pub fn create_shader(gl: &gl::Gl, name: &Path, shader_type: gl::types::GLenum) -
 }
 
 impl Material {
-    pub fn new(gl: &gl::Gl, vs: &str, fs: &str) -> Self {
-        let vs = create_shader(gl, Path::new(vs), gl::VERTEX_SHADER);
-        let fs = create_shader(gl, Path::new(fs), gl::FRAGMENT_SHADER);
+    pub fn new(vs: &str, fs: &str) -> Self {
+        let vs = create_shader(Path::new(vs), gl::VERTEX_SHADER);
+        let fs = create_shader(Path::new(fs), gl::FRAGMENT_SHADER);
 
+        let gl = DoomGl::gl();
         let program = unsafe { gl.CreateProgram() };
         unsafe {
             gl.AttachShader(program, vs);
@@ -50,33 +52,34 @@ impl Material {
         Material { vs, fs, program }
     }
 
-    pub fn get_uniform_location(&self, gl: &gl::Gl, name: &str) -> i32 {
+    pub fn get_uniform_location(&self, name: &str) -> i32 {
+        let gl = DoomGl::gl();
         let location = unsafe { gl.GetUniformLocation(self.program, name.as_ptr() as *const _) };
         unsafe { assert!(gl.GetError() == 0) };
         location
     }
 
-    pub fn get_attrib_location(&self, gl: &gl::Gl, name: &str) -> i32 {
+    pub fn get_attrib_location(&self, name: &str) -> i32 {
+        let gl = DoomGl::gl();
         let location = unsafe { gl.GetAttribLocation(self.program, name.as_ptr() as *const _) };
         unsafe { assert!(gl.GetError() == 0) };
         location
     }
 
-    pub fn bind(&self, gl: &gl::Gl) {
-        unsafe { gl.UseProgram(self.program) };
+    pub fn bind(&self) {
+        unsafe { DoomGl::gl().UseProgram(self.program) };
     }
 }
 
-/*
 impl Drop for Material {
     fn drop(&mut self) {
         unsafe {
-            self.gl.DetachShader(self.program, self.vs);
-            self.gl.DetachShader(self.program, self.fs);
-            self.gl.DeleteProgram(self.program);
-            self.gl.DeleteShader(self.vs);
-            self.gl.DeleteShader(self.fs);
+            let gl = DoomGl::gl();
+            gl.DetachShader(self.program, self.vs);
+            gl.DetachShader(self.program, self.fs);
+            gl.DeleteProgram(self.program);
+            gl.DeleteShader(self.vs);
+            gl.DeleteShader(self.fs);
         }
     }
 }
-*/

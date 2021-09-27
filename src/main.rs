@@ -17,7 +17,6 @@ use std::{cell::RefCell, path::Path, rc::Rc};
 
 use sys::content::Content;
 use wad::file::WadFile;
-use wad::map::WadMap;
 
 fn main() {
     let el = EventLoop::new();
@@ -28,16 +27,12 @@ fn main() {
         .with_title("DOOM");
     let windowed_context = ContextBuilder::new().build_windowed(wb, &el).unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
-    let gl = DoomGl::new(windowed_context.context());
+    DoomGl::init(windowed_context.context());
     let mut input = Input::new();
 
-    let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
+    let mut file = WadFile::new(Path::new("base/doom.wad")).unwrap();
 
-    let content = Content::new(&file, &gl);
-
-    let mut map = WadMap::load_map("E1M1", file, gl.gl).unwrap();
-
-    map.prepare_render_finalize(map.prepare_render(&content));
+    let mut content = Content::new(&mut file);
 
     let camera = Rc::new(RefCell::new(Camera::new()));
 
@@ -91,7 +86,7 @@ fn main() {
         if focus {
             camera.try_borrow_mut().unwrap().update();
         }
-        map.render(&camera.try_borrow_mut().unwrap());
+        content.maps[0].render(&camera.try_borrow_mut().unwrap());
         windowed_context.swap_buffers().unwrap();
     });
 }

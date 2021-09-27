@@ -16,7 +16,6 @@ pub struct Textures {
 
 fn read_texture_section(
     file: &WadFile,
-    gl: &DoomGl,
     section: &str,
     patches: &Patches,
 ) -> HashMap<String, Texture> {
@@ -101,7 +100,7 @@ fn read_texture_section(
 
             let name =
                 String::from_utf8(texture_info[0].name.to_ascii_uppercase().to_vec()).unwrap();
-            let id = gl.create_texture(&buffer, width as i32, height as i32);
+            let id = DoomGl::get().create_texture(&buffer, width as i32, height as i32);
 
             result.insert(name, Texture { width, height, id });
         }
@@ -111,13 +110,13 @@ fn read_texture_section(
 }
 
 impl Textures {
-    pub fn new(file: &WadFile, gl: &DoomGl) -> Self {
+    pub fn new(file: &WadFile) -> Self {
         // First read the patches
         let patches = Patches::new(file);
 
         // Read the TEXTUREX
-        let mut list = read_texture_section(file, gl, "TEXTURE1", &patches);
-        list.extend(read_texture_section(file, gl, "TEXTURE2", &patches));
+        let mut list = read_texture_section(file, "TEXTURE1", &patches);
+        list.extend(read_texture_section(file, "TEXTURE2", &patches));
 
         Textures { list }
     }

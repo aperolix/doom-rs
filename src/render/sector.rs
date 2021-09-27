@@ -1,5 +1,7 @@
 use cgmath::{BaseNum, Matrix4};
 
+use crate::render::doom_gl::DoomGl;
+
 use super::{doom_gl::gl, material::Material};
 
 pub struct SectorModel {
@@ -28,17 +30,18 @@ impl<T: BaseNum> ToArr for Matrix4<T> {
 }
 
 impl SectorModel {
-    pub fn new(gl: &gl::Gl, ibuffer: Vec<u16>, texture: u32) -> Self {
-        let wall_material = Material::new(gl, "./src/render/wall.vert", "./src/render/wall.frag");
+    pub fn new(ibuffer: Vec<u16>, texture: u32) -> Self {
+        let wall_material = Material::new("./src/render/wall.vert", "./src/render/wall.frag");
 
         let mut ib = unsafe { std::mem::zeroed() };
-        let pos_att = wall_material.get_attrib_location(gl, "position\0");
-        let uv_att = wall_material.get_attrib_location(gl, "uv\0");
-        let light_att = wall_material.get_attrib_location(gl, "light\0");
-        let view_att = wall_material.get_uniform_location(gl, "view\0");
-        let persp_att = wall_material.get_uniform_location(gl, "proj\0");
-        let img_att = wall_material.get_uniform_location(gl, "image\0");
+        let pos_att = wall_material.get_attrib_location("position\0");
+        let uv_att = wall_material.get_attrib_location("uv\0");
+        let light_att = wall_material.get_attrib_location("light\0");
+        let view_att = wall_material.get_uniform_location("view\0");
+        let persp_att = wall_material.get_uniform_location("proj\0");
+        let img_att = wall_material.get_uniform_location("image\0");
         unsafe {
+            let gl = DoomGl::gl();
             gl.GenBuffers(1, &mut ib);
             assert!(gl.GetError() == 0);
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ib);
@@ -93,9 +96,10 @@ impl SectorModel {
         }
     }
 
-    pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>, gl: &gl::Gl) {
+    pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>) {
         unsafe {
-            self.wall_material.bind(gl);
+            let gl = DoomGl::gl();
+            self.wall_material.bind();
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.pos_att as gl::types::GLuint);
@@ -134,12 +138,11 @@ impl SectorModel {
         }
     }
 }
-/*
-impl<'a> Drop for SectorModel<'a> {
+
+impl Drop for SectorModel {
     fn drop(&mut self) {
-        /*unsafe {
-            self.gl.DeleteBuffers(1, &self.ib);
-        }*/
+        unsafe {
+            DoomGl::gl().DeleteBuffers(1, &self.ib);
+        }
     }
 }
-*/

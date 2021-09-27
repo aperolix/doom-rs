@@ -1,10 +1,14 @@
 use cgmath::{Vector2, Vector3};
 use glutin::{self, PossiblyCurrent};
+use std::sync::Once;
 
 pub mod gl {
     #![allow(clippy::all)]
     include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
 }
+
+static mut DOOMGL: Option<DoomGl> = None;
+static DOOMGL_INIT: Once = Once::new();
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -14,26 +18,36 @@ pub struct GVertex {
     pub light: f32,
 }
 
+#[derive(Clone)]
 pub struct DoomGl {
-    pub gl: gl::Gl,
+    gl: gl::Gl,
 }
 
 impl DoomGl {
-    pub fn new(gl_context: &glutin::Context<PossiblyCurrent>) -> Self {
-        let gl = gl::Gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
-
+    pub fn init(gl_context: &glutin::Context<PossiblyCurrent>) {
         unsafe {
-            gl.Enable(gl::CULL_FACE);
-            gl.Enable(gl::DEPTH_TEST);
-            gl.DepthFunc(gl::LESS);
-            gl.FrontFace(gl::CCW);
+            DOOMGL_INIT.call_once(|| {
+                let gl = gl::Gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
+
+                DOOMGL = Some(DoomGl { gl });
+            });
+            DoomGl::gl().Enable(gl::CULL_FACE);
+            DoomGl::gl().Enable(gl::DEPTH_TEST);
+            DoomGl::gl().DepthFunc(gl::LESS);
+            DoomGl::gl().FrontFace(gl::CCW);
             //gl.Enable(gl::BLEND);
             //gl.BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
             //gl.gl.Disable(gl::CULL_FACE);
             //gl.gl.PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
         }
+    }
 
-        DoomGl { gl }
+    pub fn get() -> DoomGl {
+        unsafe { DOOMGL.clone().expect("DoomGl not initialized.") }
+    }
+
+    pub fn gl() -> gl::Gl {
+        DoomGl::get().gl
     }
 
     pub fn create_texture(&self, image: &[u8], width: i32, height: i32) -> u32 {

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::{
     camera::Camera,
     render::{
-        doom_gl::{gl, GVertex},
+        doom_gl::{gl, DoomGl, GVertex},
         sector::SectorModel,
     },
 };
@@ -148,8 +148,6 @@ pub struct WadMap {
     wall_ibuffer: Vec<Vec<u16>>,
 
     model_sectors: Vec<SectorModel>,
-
-    gl: gl::Gl,
 }
 
 pub struct PerMaterial {
@@ -459,30 +457,32 @@ impl WadMap {
         self.vbuffer = input.1;
         let mut vb = unsafe { std::mem::zeroed() };
         unsafe {
-            self.gl.GenBuffers(1, &mut vb);
-            assert!(self.gl.GetError() == 0);
-            self.gl.BindBuffer(gl::ARRAY_BUFFER, vb);
-            assert!(self.gl.GetError() == 0);
-            self.gl.BufferData(
+            let gl = DoomGl::gl();
+            gl.GenBuffers(1, &mut vb);
+            assert!(gl.GetError() == 0);
+            gl.BindBuffer(gl::ARRAY_BUFFER, vb);
+            assert!(gl.GetError() == 0);
+            gl.BufferData(
                 gl::ARRAY_BUFFER,
                 (self.vbuffer.len() * std::mem::size_of::<GVertex>()) as gl::types::GLsizeiptr,
                 self.vbuffer.as_ptr() as *const _,
                 gl::DYNAMIC_DRAW,
             );
-            assert!(self.gl.GetError() == 0);
+            assert!(gl.GetError() == 0);
         }
 
         // Create actual sectors
         for mat in input.0.iter() {
             self.model_sectors
-                .push(SectorModel::new(&self.gl, mat.1.ibuffer.clone(), *mat.0));
+                .push(SectorModel::new(mat.1.ibuffer.clone(), *mat.0));
         }
     }
 
     pub fn render(&mut self, camera: &Camera) {
         unsafe {
-            self.gl.ClearColor(0.5, 0.0, 0.5, 1.0);
-            self.gl.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            let gl = DoomGl::gl();
+            gl.ClearColor(0.5, 0.0, 0.5, 1.0);
+            gl.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             let view = Matrix4::look_at_rh(
                 camera.origin,
@@ -491,12 +491,12 @@ impl WadMap {
             );
 
             for s in &self.model_sectors {
-                s.render(&view, &camera.persp, &self.gl);
+                s.render(&view, &camera.persp);
             }
         }
     }
 
-    pub fn load_map(name: &str, mut wad: WadFile, gl: gl::Gl) -> Result<WadMap, String> {
+    pub fn new(name: &str, wad: &mut WadFile, content: &Content) -> Result<WadMap, String> {
         let mapidx = match wad.directory.find_section(name, 0) {
             Some(i) => i,
             None => return Err("Map not found".to_string()),
@@ -510,7 +510,7 @@ impl WadMap {
         let ssectors = wad.read_section(mapidx, "SSECTORS");
         let nodes = wad.read_section(mapidx, "NODES");
 
-        Ok(WadMap {
+        let mut map = WadMap {
             linedefs,
             sidedefs,
             segs,
@@ -521,7 +521,8 @@ impl WadMap {
             vbuffer: Vec::new(),
             wall_ibuffer: Vec::new(),
             model_sectors: Vec::new(),
-            gl,
-        })
+        };
+        map.prepare_render_finalize(map.prepare_render(content));
+        Ok(map)
     }
 }
