@@ -1,15 +1,20 @@
-use cgmath::{BaseNum, Matrix4};
+use std::{cell::RefCell, rc::Rc};
+
+use cgmath::Matrix4;
 
 use crate::render::doom_gl::DoomGl;
 
-use super::{doom_gl::gl, material::Material};
+use super::{
+    doom_gl::gl,
+    material::{Material, MaterialBindableParam, MaterialParm},
+};
 
 pub struct SectorModel {
     wall_ibuffer: Vec<u16>,
     wall_material: Material,
     ib: u32,
-    view_att: i32,
-    persp_att: i32,
+    view_att: Rc<RefCell<MaterialParm<Matrix4<f32>>>>,
+    persp_att: Rc<RefCell<MaterialParm<Matrix4<f32>>>>,
     pos_att: i32,
     uv_att: i32,
     light_att: i32,
@@ -17,28 +22,16 @@ pub struct SectorModel {
     texture: u32,
 }
 
-pub trait ToArr {
-    type Output;
-    fn to_arr(&self) -> Self::Output;
-}
-
-impl<T: BaseNum> ToArr for Matrix4<T> {
-    type Output = [[T; 4]; 4];
-    fn to_arr(&self) -> Self::Output {
-        (*self).into()
-    }
-}
-
 impl SectorModel {
     pub fn new(ibuffer: Vec<u16>, texture: u32) -> Self {
-        let wall_material = Material::new("./src/render/wall.vert", "./src/render/wall.frag");
+        let mut wall_material = Material::new("./src/render/wall.vert", "./src/render/wall.frag");
 
         let mut ib = unsafe { std::mem::zeroed() };
         let pos_att = wall_material.get_attrib_location("position\0");
         let uv_att = wall_material.get_attrib_location("uv\0");
         let light_att = wall_material.get_attrib_location("light\0");
-        let view_att = wall_material.get_uniform_location("view\0");
-        let persp_att = wall_material.get_uniform_location("proj\0");
+        let view_att = MaterialBindableParam::new("view\0", &mut wall_material);
+        let persp_att = MaterialBindableParam::new("proj\0", &mut wall_material);
         let img_att = wall_material.get_uniform_location("image\0");
         unsafe {
             let gl = DoomGl::gl();
@@ -108,20 +101,8 @@ impl SectorModel {
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.light_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
-            gl.UniformMatrix4fv(
-                self.view_att,
-                1,
-                gl::FALSE,
-                view.to_arr().as_ptr() as *const _,
-            );
-            assert!(gl.GetError() == 0);
-            gl.UniformMatrix4fv(
-                self.persp_att,
-                1,
-                gl::FALSE,
-                persp.to_arr().as_ptr() as *const _,
-            );
-            assert!(gl.GetError() == 0);
+            self.view_att.borrow_mut().set_value(*view);
+            self.persp_att.borrow_mut().set_value(*persp);
             gl.Uniform1i(self.img_att, 0);
             assert!(gl.GetError() == 0);
             gl.ActiveTexture(gl::TEXTURE0);

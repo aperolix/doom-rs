@@ -1,14 +1,78 @@
+use cgmath::{BaseNum, Matrix4, SquareMatrix};
+
 use super::doom_gl::{gl, DoomGl};
+use std::cell::RefCell;
 use std::io::Read;
+use std::rc::Rc;
 use std::{fs::File, path::Path};
+
+pub trait ToArr {
+    type Output;
+    fn to_arr(&self) -> Self::Output;
+}
+
+impl<T: BaseNum> ToArr for Matrix4<T> {
+    type Output = [[T; 4]; 4];
+    fn to_arr(&self) -> Self::Output {
+        (*self).into()
+    }
+}
+
+pub trait MaterialBindableParam {
+    fn new(name: &'static str, material: &mut Material) -> Rc<RefCell<Self>>
+    where
+        Self: Sized;
+    fn bind(&self);
+}
+
+pub struct MaterialParm<T> {
+    id: i32,
+    value: T,
+}
+
+impl<T> MaterialParm<T> {
+    pub fn set_value(&mut self, value: T) {
+        self.value = value;
+    }
+}
+
+impl MaterialBindableParam for MaterialParm<Matrix4<f32>> {
+    fn new(name: &'static str, material: &mut Material) -> Rc<RefCell<Self>>
+    where
+        Self: Sized,
+    {
+        let id = material.get_uniform_location(name);
+        let result = Rc::new(RefCell::new(MaterialParm {
+            id,
+            value: Matrix4::identity(),
+        }));
+
+        material.register_parm(result.clone() as Rc<RefCell<dyn MaterialBindableParam>>);
+        result
+    }
+
+    fn bind(&self) {
+        let gl = DoomGl::gl();
+        unsafe {
+            gl.UniformMatrix4fv(
+                self.id,
+                1,
+                gl::FALSE,
+                self.value.to_arr().as_ptr() as *const _,
+            );
+            assert!(gl.GetError() == 0);
+        }
+    }
+}
 
 pub struct Material {
     vs: u32,
     fs: u32,
     program: u32,
+    parms: Vec<Rc<RefCell<dyn MaterialBindableParam>>>,
 }
 
-pub fn create_shader(name: &Path, shader_type: gl::types::GLenum) -> u32 {
+fn create_shader(name: &Path, shader_type: gl::types::GLenum) -> u32 {
     let mut file = File::open(name).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
@@ -49,7 +113,12 @@ impl Material {
             gl.LinkProgram(program);
         }
 
-        Material { vs, fs, program }
+        Material {
+            vs,
+            fs,
+            program,
+            parms: Vec::new(),
+        }
     }
 
     pub fn get_uniform_location(&self, name: &str) -> i32 {
@@ -66,8 +135,17 @@ impl Material {
         location
     }
 
+    pub fn register_parm(&mut self, parm: Rc<RefCell<dyn MaterialBindableParam>>) {
+        self.parms.push(parm);
+    }
+
     pub fn bind(&self) {
         unsafe { DoomGl::gl().UseProgram(self.program) };
+
+        // Bind all current params
+        for parm in &self.parms {
+            parm.borrow().bind();
+        }
     }
 }
 

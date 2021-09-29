@@ -84,17 +84,6 @@ pub struct Vertex {
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
-pub struct Segment {
-    start_vertex: i16,
-    end_vertex: i16,
-    angle: i16,
-    linedef: i16,
-    direction: i16,
-    offset: i16,
-}
-
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
 pub struct Sector {
     floor: i16,
     ceiling: i16,
@@ -105,48 +94,13 @@ pub struct Sector {
     tag: i16,
 }
 
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct SubSector {
-    seg_count: i16,
-    first_seg: i16,
-}
-
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct BoundingBox {
-    top: i16,
-    bottom: i16,
-    left: i16,
-    right: i16,
-}
-
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct Nodes {
-    partition_x: i16,
-    partition_y: i16,
-    change_x: i16,
-    change_y: i16,
-    right_bbox: BoundingBox,
-    left_bbox: BoundingBox,
-    right_child: i16,
-    left_child: i16,
-}
-
-#[allow(dead_code)]
 pub struct WadMap {
     linedefs: Vec<LineDef>,
     sidedefs: Vec<SideDef>,
     vertexes: Vec<Vertex>,
-    segs: Vec<Segment>,
     sectors: Vec<Sector>,
-    ssectors: Vec<SubSector>,
-    nodes: Vec<Nodes>,
 
     vbuffer: Vec<GVertex>,
-    wall_ibuffer: Vec<Vec<u16>>,
-
     model_sectors: Vec<SectorModel>,
 }
 
@@ -505,21 +459,14 @@ impl WadMap {
         let linedefs = wad.read_section(mapidx, "LINEDEFS");
         let sidedefs = wad.read_section(mapidx, "SIDEDEFS");
         let vertexes = wad.read_section(mapidx, "VERTEXES");
-        let segs = wad.read_section(mapidx, "SEGS");
         let sectors = wad.read_section(mapidx, "SECTORS");
-        let ssectors = wad.read_section(mapidx, "SSECTORS");
-        let nodes = wad.read_section(mapidx, "NODES");
 
         let mut map = WadMap {
             linedefs,
             sidedefs,
-            segs,
             sectors,
-            ssectors,
-            nodes,
             vertexes,
             vbuffer: Vec::new(),
-            wall_ibuffer: Vec::new(),
             model_sectors: Vec::new(),
         };
         map.prepare_render_finalize(map.prepare_render(content));

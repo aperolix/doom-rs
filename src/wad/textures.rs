@@ -20,7 +20,6 @@ fn read_texture_section(
     patches: &Patches,
 ) -> HashMap<String, Texture> {
     #[repr(C, packed)]
-    //#[derive( Copy, Clone)]
     struct TextureInfo {
         name: [u8; 8],
         masked: i32,
@@ -31,7 +30,6 @@ fn read_texture_section(
     }
 
     #[repr(C, packed)]
-    //#[derive(Debug, Copy, Clone)]
     struct PatchInfo {
         origin_x: i16,
         origin_y: i16,
