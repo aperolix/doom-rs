@@ -6,6 +6,7 @@ pub struct SectorModel {
     wall_ibuffer: Vec<u16>,
     wall_material: Material,
     ib: u32,
+    vao: u32,
     view_att: i32,
     persp_att: i32,
     pos_att: i32,
@@ -32,6 +33,7 @@ impl SectorModel {
         let wall_material = Material::new(gl, "./src/render/wall.vert", "./src/render/wall.frag");
 
         let mut ib = unsafe { std::mem::zeroed() };
+        let mut vao = unsafe { std::mem::zeroed() };
         let pos_att = wall_material.get_attrib_location(gl, "position\0");
         let uv_att = wall_material.get_attrib_location(gl, "uv\0");
         let light_att = wall_material.get_attrib_location(gl, "light\0");
@@ -39,6 +41,10 @@ impl SectorModel {
         let persp_att = wall_material.get_uniform_location(gl, "proj\0");
         let img_att = wall_material.get_uniform_location(gl, "image\0");
         unsafe {
+            // generate and bind the vao
+            gl.GenVertexArrays(1, &mut vao);
+            gl.BindVertexArray(vao);
+
             gl.GenBuffers(1, &mut ib);
             assert!(gl.GetError() == 0);
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ib);
@@ -83,6 +89,7 @@ impl SectorModel {
             wall_ibuffer: ibuffer,
             wall_material,
             ib,
+            vao,
             view_att,
             persp_att,
             pos_att,
@@ -97,6 +104,7 @@ impl SectorModel {
         unsafe {
             self.wall_material.bind(gl);
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
+            gl.BindVertexArray(self.vao);
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.pos_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
