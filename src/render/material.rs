@@ -2,9 +2,7 @@ use cgmath::{BaseNum, Matrix4, SquareMatrix};
 
 use super::doom_gl::{gl, DoomGl};
 use std::cell::RefCell;
-use std::io::Read;
 use std::rc::Rc;
-use std::{fs::File, path::Path};
 
 pub trait ToArr {
     type Output;
@@ -72,11 +70,7 @@ pub struct Material {
     parms: Vec<Rc<RefCell<dyn MaterialBindableParam>>>,
 }
 
-fn create_shader(name: &Path, shader_type: gl::types::GLenum) -> u32 {
-    let mut file = File::open(name).unwrap();
-    let mut content = String::new();
-    file.read_to_string(&mut content).unwrap();
-
+pub fn create_shader(content: &str, shader_type: gl::types::GLenum) -> u32 {
     let length = content.len() as i32;
 
     let vs;
@@ -102,8 +96,8 @@ fn create_shader(name: &Path, shader_type: gl::types::GLenum) -> u32 {
 
 impl Material {
     pub fn new(vs: &str, fs: &str) -> Self {
-        let vs = create_shader(Path::new(vs), gl::VERTEX_SHADER);
-        let fs = create_shader(Path::new(fs), gl::FRAGMENT_SHADER);
+        let vs = create_shader(vs, gl::VERTEX_SHADER);
+        let fs = create_shader(fs, gl::FRAGMENT_SHADER);
 
         let gl = DoomGl::gl();
         let program = unsafe { gl.CreateProgram() };

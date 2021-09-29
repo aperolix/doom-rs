@@ -23,9 +23,12 @@ pub struct SectorModel {
     texture: u32,
 }
 
+const WALL_FRAG_STR: &str = include_str!("wall.frag");
+const WALL_VERT_STR: &str = include_str!("wall.vert");
+
 impl SectorModel {
     pub fn new(ibuffer: Vec<u16>, texture: u32) -> Self {
-        let mut wall_material = Material::new("./src/render/wall.vert", "./src/render/wall.frag");
+        let mut wall_material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
 
         let mut ib = unsafe { std::mem::zeroed() };
         let mut vao = unsafe { std::mem::zeroed() };
