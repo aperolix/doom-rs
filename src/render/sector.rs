@@ -28,9 +28,12 @@ impl<T: BaseNum> ToArr for Matrix4<T> {
     }
 }
 
+const WALL_FRAG_STR: &str = include_str!("wall.frag");
+const WALL_VERT_STR: &str = include_str!("wall.vert");
+
 impl SectorModel {
     pub fn new(gl: &gl::Gl, ibuffer: Vec<u16>, texture: u32) -> Self {
-        let wall_material = Material::new(gl, "./src/render/wall.vert", "./src/render/wall.frag");
+        let wall_material = Material::new(gl, WALL_VERT_STR, WALL_FRAG_STR);
 
         let mut ib = unsafe { std::mem::zeroed() };
         let mut vao = unsafe { std::mem::zeroed() };

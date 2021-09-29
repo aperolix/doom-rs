@@ -8,11 +8,7 @@ pub struct Material {
     program: u32,
 }
 
-pub fn create_shader(gl: &gl::Gl, name: &Path, shader_type: gl::types::GLenum) -> u32 {
-    let mut file = File::open(name).unwrap();
-    let mut content = String::new();
-    file.read_to_string(&mut content).unwrap();
-
+pub fn create_shader(gl: &gl::Gl, content: &str, shader_type: gl::types::GLenum) -> u32 {
     let length = content.len() as i32;
 
     let vs;
@@ -37,8 +33,8 @@ pub fn create_shader(gl: &gl::Gl, name: &Path, shader_type: gl::types::GLenum) -
 
 impl Material {
     pub fn new(gl: &gl::Gl, vs: &str, fs: &str) -> Self {
-        let vs = create_shader(gl, Path::new(vs), gl::VERTEX_SHADER);
-        let fs = create_shader(gl, Path::new(fs), gl::FRAGMENT_SHADER);
+        let vs = create_shader(gl, vs, gl::VERTEX_SHADER);
+        let fs = create_shader(gl, fs, gl::FRAGMENT_SHADER);
 
         let program = unsafe { gl.CreateProgram() };
         unsafe {
