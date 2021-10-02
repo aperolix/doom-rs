@@ -103,8 +103,8 @@ impl SectorModel {
         unsafe {
             let gl = DoomGl::gl();
             self.wall_material.bind();
-            gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
             gl.BindVertexArray(self.vao);
+            gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.pos_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
@@ -126,6 +126,7 @@ impl SectorModel {
                 gl::UNSIGNED_SHORT,
                 std::ptr::null(),
             );
+            gl.BindVertexArray(0);
             assert!(gl.GetError() == 0);
         }
     }
