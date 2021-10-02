@@ -24,6 +24,7 @@ pub struct Stride {
 }
 
 #[derive(Copy, Clone)]
+#[allow(dead_code)]
 pub enum MaterialValue {
     None,
     Float(f32),
@@ -39,8 +40,8 @@ pub struct MaterialParam {
 
 impl MaterialParam {
     pub fn set_value(&self, value: MaterialValue) {
-        match value {
-            MaterialValue::FloatStride(s) => unsafe {
+        if let MaterialValue::FloatStride(s) = value {
+            unsafe {
                 let pointer = if s.offset == 0 {
                     std::ptr::null()
                 } else {
@@ -55,8 +56,7 @@ impl MaterialParam {
                     pointer,
                 );
                 assert!(DoomGl::gl().GetError() == 0);
-            },
-            _ => (),
+            }
         }
         self.value.set(value);
     }
