@@ -17,10 +17,19 @@ impl<T: BaseNum> ToArr for Matrix4<T> {
 }
 
 #[derive(Copy, Clone)]
+pub struct Stride {
+    pub count: usize,
+    pub stride: usize,
+    pub offset: usize,
+}
+
+#[derive(Copy, Clone)]
 pub enum MaterialValue {
     None,
     Float(f32),
+    Int(i32),
     Matrix(Matrix4<f32>),
+    FloatStride(Stride),
 }
 
 pub struct MaterialParam {
@@ -30,11 +39,41 @@ pub struct MaterialParam {
 
 impl MaterialParam {
     pub fn set_value(&self, value: MaterialValue) {
+        match value {
+            MaterialValue::FloatStride(s) => unsafe {
+                let pointer = if s.offset == 0 {
+                    std::ptr::null()
+                } else {
+                    s.offset as *const () as *const _
+                };
+                DoomGl::gl().VertexAttribPointer(
+                    self.id as u32,
+                    s.count as i32,
+                    gl::FLOAT,
+                    gl::FALSE,
+                    s.stride as i32,
+                    pointer,
+                );
+                assert!(DoomGl::gl().GetError() == 0);
+            },
+            _ => (),
+        }
         self.value.set(value);
     }
 
-    pub fn new(name: &'static str, material: &mut Material) -> Rc<Self> {
+    pub fn from_uniform(name: &'static str, material: &mut Material) -> Rc<Self> {
         let id = material.get_uniform_location(name);
+        let result = Rc::new(MaterialParam {
+            id,
+            value: Cell::new(MaterialValue::None),
+        });
+
+        material.register_parm(result.clone());
+        result
+    }
+
+    pub fn from_attrib(name: &'static str, material: &mut Material) -> Rc<Self> {
+        let id = material.get_attrib_location(name);
         let result = Rc::new(MaterialParam {
             id,
             value: Cell::new(MaterialValue::None),
@@ -53,6 +92,10 @@ impl MaterialParam {
             MaterialValue::Matrix(m) => unsafe {
                 gl.UniformMatrix4fv(self.id, 1, gl::FALSE, m.to_arr().as_ptr() as *const _);
             },
+            MaterialValue::Int(i) => unsafe {
+                gl.Uniform1i(self.id, i);
+            },
+            MaterialValue::FloatStride(_) => unsafe { gl.EnableVertexAttribArray(self.id as u32) },
             MaterialValue::None => panic!("No valid value for MaterialParam"),
         }
         unsafe { assert!(gl.GetError() == 0) };

@@ -5,7 +5,7 @@ use crate::{
     camera::Camera,
     render::{
         doom_gl::{gl, DoomGl, GVertex},
-        sector::SectorModel,
+        wall_model::WallModel,
     },
 };
 
@@ -101,7 +101,7 @@ pub struct WadMap {
     sectors: Vec<Sector>,
 
     vbuffer: Vec<GVertex>,
-    model_sectors: Vec<SectorModel>,
+    model_sectors: Vec<WallModel>,
 }
 
 pub struct PerMaterial {
@@ -428,7 +428,7 @@ impl WadMap {
         // Create actual sectors
         for mat in input.0.iter() {
             self.model_sectors
-                .push(SectorModel::new(mat.1.ibuffer.clone(), *mat.0));
+                .push(WallModel::new(mat.1.ibuffer.clone(), *mat.0));
         }
     }
 
