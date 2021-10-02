@@ -1,5 +1,5 @@
 use core::str;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
     camera::Camera,
@@ -100,19 +100,14 @@ pub struct WadMap {
     vertexes: Vec<Vertex>,
     sectors: Vec<Sector>,
 
-    vbuffer: Vec<GVertex>,
-    model_sectors: Vec<WallModel>,
-}
-
-pub struct PerMaterial {
-    pub ibuffer: Vec<u16>,
+    vbuffer: RefCell<Vec<GVertex>>,
+    walls: RefCell<Vec<WallModel>>,
 }
 
 impl WadMap {
     fn add_quad(
         &self,
-        vbuffer: &mut Vec<GVertex>,
-        material: &mut PerMaterial,
+        wall_index: usize,
         line: (u16, u16),
         heights: (f32, f32),
         texture_size: (f32, f32),
@@ -160,10 +155,10 @@ impl WadMap {
             },
         ];
 
-        let startidx = vbuffer.len() as u16;
+        let startidx = self.vbuffer.borrow().len() as u16;
 
-        vbuffer.append(&mut quad_buffer);
-        material.ibuffer.append(&mut vec![
+        self.vbuffer.borrow_mut().append(&mut quad_buffer);
+        self.walls.borrow_mut()[wall_index].append_indexes(vec![
             startidx,
             startidx + 1,
             startidx + 2,
@@ -175,30 +170,25 @@ impl WadMap {
 
     fn prepare_line_render(
         &self,
-        per_material: &mut HashMap<u32, PerMaterial>,
-        vbuffer: &mut Vec<GVertex>,
+        model_per_texture: &mut HashMap<u32, usize>,
         texture: &Texture,
         line: (u16, u16),
         heights: (f32, f32),
         texture_offset: (f32, f32),
         light: f32,
     ) {
-        let material = if let Some(m) = per_material.get_mut(&texture.id) {
-            m
+        let wall_index = if let Some(i) = model_per_texture.get(&texture.id) {
+            *i
         } else {
-            per_material.insert(
-                texture.id,
-                PerMaterial {
-                    ibuffer: Vec::new(),
-                },
-            );
-            per_material.get_mut(&texture.id).unwrap()
+            self.walls.borrow_mut().push(WallModel::new(texture.id));
+            let index = self.walls.borrow().len() - 1;
+            model_per_texture.insert(texture.id, index);
+            index
         };
 
         // push vertices
         self.add_quad(
-            vbuffer,
-            material,
+            wall_index,
             line,
             heights,
             (texture.width as f32, texture.height as f32),
@@ -207,10 +197,8 @@ impl WadMap {
         );
     }
 
-    pub fn prepare_render(&self, content: &Content) -> (HashMap<u32, PerMaterial>, Vec<GVertex>) {
-        let mut vbuffer = Vec::new();
-
-        let mut per_material = HashMap::new();
+    fn prepare_wall_render(&self, content: &Content) {
+        let mut model_per_texture = HashMap::new();
 
         // Create walls buffers
         for l in &self.linedefs {
@@ -271,8 +259,7 @@ impl WadMap {
                 }
 
                 self.prepare_line_render(
-                    &mut per_material,
-                    &mut vbuffer,
+                    &mut model_per_texture,
                     texture,
                     line,
                     (front_floor, back_floor),
@@ -294,8 +281,7 @@ impl WadMap {
                     line_offset = texture_offset;
                 }
                 self.prepare_line_render(
-                    &mut per_material,
-                    &mut vbuffer,
+                    &mut model_per_texture,
                     texture,
                     line,
                     (back_floor, back_ceil),
@@ -317,8 +303,7 @@ impl WadMap {
                     line_offset = texture_offset;
                 }
                 self.prepare_line_render(
-                    &mut per_material,
-                    &mut vbuffer,
+                    &mut model_per_texture,
                     texture,
                     line,
                     (back_ceil, front_ceil),
@@ -346,8 +331,7 @@ impl WadMap {
                     }
 
                     self.prepare_line_render(
-                        &mut per_material,
-                        &mut vbuffer,
+                        &mut model_per_texture,
                         texture,
                         line,
                         (back_floor, front_floor),
@@ -369,8 +353,7 @@ impl WadMap {
                         line_offset = texture_offset;
                     }
                     self.prepare_line_render(
-                        &mut per_material,
-                        &mut vbuffer,
+                        &mut model_per_texture,
                         texture,
                         line,
                         (front_floor, front_ceil),
@@ -392,8 +375,7 @@ impl WadMap {
                         line_offset = texture_offset;
                     }
                     self.prepare_line_render(
-                        &mut per_material,
-                        &mut vbuffer,
+                        &mut model_per_texture,
                         texture,
                         line,
                         (front_ceil, back_ceil),
@@ -403,12 +385,11 @@ impl WadMap {
                 }
             }
         }
-
-        (per_material, vbuffer)
     }
 
-    pub fn prepare_render_finalize(&mut self, input: (HashMap<u32, PerMaterial>, Vec<GVertex>)) {
-        self.vbuffer = input.1;
+    pub fn prepare_render(&self, content: &Content) {
+        self.prepare_wall_render(content);
+
         let mut vb = unsafe { std::mem::zeroed() };
         unsafe {
             let gl = DoomGl::gl();
@@ -418,21 +399,21 @@ impl WadMap {
             assert!(gl.GetError() == 0);
             gl.BufferData(
                 gl::ARRAY_BUFFER,
-                (self.vbuffer.len() * std::mem::size_of::<GVertex>()) as gl::types::GLsizeiptr,
-                self.vbuffer.as_ptr() as *const _,
+                (self.vbuffer.borrow().len() * std::mem::size_of::<GVertex>())
+                    as gl::types::GLsizeiptr,
+                self.vbuffer.borrow().as_ptr() as *const _,
                 gl::DYNAMIC_DRAW,
             );
             assert!(gl.GetError() == 0);
         }
 
         // Create actual sectors
-        for mat in input.0.iter() {
-            self.model_sectors
-                .push(WallModel::new(mat.1.ibuffer.clone(), *mat.0));
+        for wall in self.walls.borrow_mut().iter_mut() {
+            wall.init();
         }
     }
 
-    pub fn render(&mut self, camera: &Camera) {
+    pub fn render(&self, camera: &Camera) {
         unsafe {
             let gl = DoomGl::gl();
             gl.ClearColor(0.5, 0.0, 0.5, 1.0);
@@ -444,7 +425,7 @@ impl WadMap {
                 Vector3::unit_y(),
             );
 
-            for s in &self.model_sectors {
+            for s in self.walls.borrow().iter() {
                 s.render(&view, &camera.persp);
             }
         }
@@ -461,15 +442,15 @@ impl WadMap {
         let vertexes = wad.read_section(mapidx, "VERTEXES");
         let sectors = wad.read_section(mapidx, "SECTORS");
 
-        let mut map = WadMap {
+        let map = WadMap {
             linedefs,
             sidedefs,
             sectors,
             vertexes,
-            vbuffer: Vec::new(),
-            model_sectors: Vec::new(),
+            vbuffer: RefCell::new(Vec::new()),
+            walls: RefCell::new(Vec::new()),
         };
-        map.prepare_render_finalize(map.prepare_render(content));
+        map.prepare_render(content);
         Ok(map)
     }
 }

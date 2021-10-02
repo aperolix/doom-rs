@@ -27,7 +27,24 @@ const WALL_FRAG_STR: &str = include_str!("wall.frag");
 const WALL_VERT_STR: &str = include_str!("wall.vert");
 
 impl WallModel {
-    pub fn new(ibuffer: Vec<u16>, texture: u32) -> Self {
+    pub fn new(texture: u32) -> Self {
+        let mut material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
+        let view_att = MaterialParam::from_uniform("view\0", &mut material);
+        let persp_att = MaterialParam::from_uniform("proj\0", &mut material);
+        let img_att = MaterialParam::from_uniform("image\0", &mut material);
+
+        WallModel {
+            ibuffer: Vec::new(),
+            material,
+            ib: 0,
+            view_att,
+            persp_att,
+            vao: 0,
+            img_att,
+            texture,
+        }
+    }
+    pub fn init(&mut self) {
         let mut ib = unsafe { std::mem::zeroed() };
         let mut vao = unsafe { std::mem::zeroed() };
 
@@ -41,20 +58,19 @@ impl WallModel {
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ib);
             gl.BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
-                (ibuffer.len() * std::mem::size_of::<u16>()) as gl::types::GLsizeiptr,
-                ibuffer.as_ptr() as *const _,
+                (self.ibuffer.len() * std::mem::size_of::<u16>()) as gl::types::GLsizeiptr,
+                self.ibuffer.as_ptr() as *const _,
                 gl::DYNAMIC_DRAW,
             );
+            self.vao = vao;
+            self.ib = ib;
+
             assert!(gl.GetError() == 0);
         }
 
-        let mut material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
-        let pos_att = MaterialParam::from_attrib("position\0", &mut material);
-        let uv_att = MaterialParam::from_attrib("uv\0", &mut material);
-        let light_att = MaterialParam::from_attrib("light\0", &mut material);
-        let view_att = MaterialParam::from_uniform("view\0", &mut material);
-        let persp_att = MaterialParam::from_uniform("proj\0", &mut material);
-        let img_att = MaterialParam::from_uniform("image\0", &mut material);
+        let pos_att = MaterialParam::from_attrib("position\0", &mut self.material);
+        let uv_att = MaterialParam::from_attrib("uv\0", &mut self.material);
+        let light_att = MaterialParam::from_attrib("light\0", &mut self.material);
 
         // Always bind stride after the buffer is bound
         pos_att.set_value(MaterialValue::FloatStride(Stride {
@@ -72,17 +88,10 @@ impl WallModel {
             stride: 6 * std::mem::size_of::<f32>(),
             offset: 5 * std::mem::size_of::<f32>(),
         }));
+    }
 
-        WallModel {
-            ibuffer,
-            material,
-            ib,
-            vao,
-            view_att,
-            persp_att,
-            img_att,
-            texture,
-        }
+    pub fn append_indexes(&mut self, mut other: Vec<u16>) {
+        self.ibuffer.append(&mut other);
     }
 
     pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>) {
