@@ -1,7 +1,7 @@
-use cgmath::{BaseNum, Matrix4, SquareMatrix};
+use cgmath::{BaseNum, Matrix4};
 
 use super::doom_gl::{gl, DoomGl};
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::rc::Rc;
 
 pub trait ToArr {
@@ -16,50 +16,46 @@ impl<T: BaseNum> ToArr for Matrix4<T> {
     }
 }
 
-pub trait MaterialBindableParam {
-    fn new(name: &'static str, material: &mut Material) -> Rc<RefCell<Self>>
-    where
-        Self: Sized;
-    fn bind(&self);
+#[derive(Copy, Clone)]
+pub enum MaterialValue {
+    None,
+    Float(f32),
+    Matrix(Matrix4<f32>),
 }
 
-pub struct MaterialParm<T> {
+pub struct MaterialParam {
     id: i32,
-    value: T,
+    value: Cell<MaterialValue>,
 }
 
-impl<T> MaterialParm<T> {
-    pub fn set_value(&mut self, value: T) {
-        self.value = value;
+impl MaterialParam {
+    pub fn set_value(&self, value: MaterialValue) {
+        self.value.set(value);
     }
-}
 
-impl MaterialBindableParam for MaterialParm<Matrix4<f32>> {
-    fn new(name: &'static str, material: &mut Material) -> Rc<RefCell<Self>>
-    where
-        Self: Sized,
-    {
+    pub fn new(name: &'static str, material: &mut Material) -> Rc<Self> {
         let id = material.get_uniform_location(name);
-        let result = Rc::new(RefCell::new(MaterialParm {
+        let result = Rc::new(MaterialParam {
             id,
-            value: Matrix4::identity(),
-        }));
+            value: Cell::new(MaterialValue::None),
+        });
 
-        material.register_parm(result.clone() as Rc<RefCell<dyn MaterialBindableParam>>);
+        material.register_parm(result.clone());
         result
     }
 
     fn bind(&self) {
         let gl = DoomGl::gl();
-        unsafe {
-            gl.UniformMatrix4fv(
-                self.id,
-                1,
-                gl::FALSE,
-                self.value.to_arr().as_ptr() as *const _,
-            );
-            assert!(gl.GetError() == 0);
+        match self.value.get() {
+            MaterialValue::Float(f) => unsafe {
+                gl.Uniform1f(self.id, f);
+            },
+            MaterialValue::Matrix(m) => unsafe {
+                gl.UniformMatrix4fv(self.id, 1, gl::FALSE, m.to_arr().as_ptr() as *const _);
+            },
+            MaterialValue::None => panic!("No valid value for MaterialParam"),
         }
+        unsafe { assert!(gl.GetError() == 0) };
     }
 }
 
@@ -67,7 +63,7 @@ pub struct Material {
     vs: u32,
     fs: u32,
     program: u32,
-    parms: Vec<Rc<RefCell<dyn MaterialBindableParam>>>,
+    parms: Vec<Rc<MaterialParam>>,
 }
 
 pub fn create_shader(content: &str, shader_type: gl::types::GLenum) -> u32 {
@@ -129,7 +125,7 @@ impl Material {
         location
     }
 
-    pub fn register_parm(&mut self, parm: Rc<RefCell<dyn MaterialBindableParam>>) {
+    pub fn register_parm(&mut self, parm: Rc<MaterialParam>) {
         self.parms.push(parm);
     }
 
@@ -138,7 +134,7 @@ impl Material {
 
         // Bind all current params
         for parm in &self.parms {
-            parm.borrow().bind();
+            parm.bind();
         }
     }
 }

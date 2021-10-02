@@ -1,20 +1,20 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use cgmath::Matrix4;
 
-use crate::render::doom_gl::DoomGl;
+use crate::render::{doom_gl::DoomGl, material::MaterialValue};
 
 use super::{
     doom_gl::gl,
-    material::{Material, MaterialBindableParam, MaterialParm},
+    material::{Material, MaterialParam},
 };
 
 pub struct SectorModel {
     wall_ibuffer: Vec<u16>,
     wall_material: Material,
     ib: u32,
-    view_att: Rc<RefCell<MaterialParm<Matrix4<f32>>>>,
-    persp_att: Rc<RefCell<MaterialParm<Matrix4<f32>>>>,
+    view_att: Rc<MaterialParam>,
+    persp_att: Rc<MaterialParam>,
     vao: u32,
     pos_att: i32,
     uv_att: i32,
@@ -35,8 +35,8 @@ impl SectorModel {
         let pos_att = wall_material.get_attrib_location("position\0");
         let uv_att = wall_material.get_attrib_location("uv\0");
         let light_att = wall_material.get_attrib_location("light\0");
-        let view_att = MaterialBindableParam::new("view\0", &mut wall_material);
-        let persp_att = MaterialBindableParam::new("proj\0", &mut wall_material);
+        let view_att = MaterialParam::new("view\0", &mut wall_material);
+        let persp_att = MaterialParam::new("proj\0", &mut wall_material);
         let img_att = wall_material.get_uniform_location("image\0");
         unsafe {
             let gl = DoomGl::gl();
@@ -102,6 +102,10 @@ impl SectorModel {
     pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>) {
         unsafe {
             let gl = DoomGl::gl();
+
+            self.view_att.set_value(MaterialValue::Matrix(*view));
+            self.persp_att.set_value(MaterialValue::Matrix(*persp));
+
             self.wall_material.bind();
             gl.BindVertexArray(self.vao);
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
@@ -112,8 +116,6 @@ impl SectorModel {
             assert!(gl.GetError() == 0);
             gl.EnableVertexAttribArray(self.light_att as gl::types::GLuint);
             assert!(gl.GetError() == 0);
-            self.view_att.borrow_mut().set_value(*view);
-            self.persp_att.borrow_mut().set_value(*persp);
             gl.Uniform1i(self.img_att, 0);
             assert!(gl.GetError() == 0);
             gl.ActiveTexture(gl::TEXTURE0);
