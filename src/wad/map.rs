@@ -13,7 +13,7 @@ use super::{file::WadFile, textures::Texture};
 use crate::sys::content::Content;
 
 use bitflags::bitflags;
-use cgmath::{InnerSpace, Matrix4, Vector2, Vector3};
+use cgmath::{InnerSpace, Matrix4, Point2, Vector2, Vector3};
 
 bitflags! {
     struct LinedefFlags: i16 {
@@ -105,6 +105,7 @@ pub struct WadMap {
 }
 
 impl WadMap {
+    /// Add a wall quad
     fn add_quad(
         &self,
         wall_index: usize,
@@ -168,6 +169,7 @@ impl WadMap {
         ]);
     }
 
+    /// Prepare wall side rendering
     fn prepare_line_render(
         &self,
         model_per_texture: &mut HashMap<u32, usize>,
@@ -197,6 +199,7 @@ impl WadMap {
         );
     }
 
+    /// Handle the wall model creation
     fn prepare_wall_render(&self, content: &Content) {
         let mut model_per_texture = HashMap::new();
 
@@ -387,8 +390,12 @@ impl WadMap {
         }
     }
 
-    pub fn prepare_render(&self, content: &Content) {
+    fn prepare_ground_ceil(&self, _content: &Content) {}
+
+    /// Prepare the vbuffer & ibuffer of the map
+    fn prepare_render(&self, content: &Content) {
         self.prepare_wall_render(content);
+        self.prepare_ground_ceil(content);
 
         let mut vb = unsafe { std::mem::zeroed() };
         unsafe {
@@ -413,6 +420,7 @@ impl WadMap {
         }
     }
 
+    /// Render the map
     pub fn render(&self, camera: &Camera) {
         unsafe {
             let gl = DoomGl::gl();
@@ -431,16 +439,96 @@ impl WadMap {
         }
     }
 
+    /// Load the map and prepare render
     pub fn new(name: &str, wad: &mut WadFile, content: &Content) -> Result<WadMap, String> {
         let mapidx = match wad.directory.find_section(name, 0) {
             Some(i) => i,
             None => return Err("Map not found".to_string()),
         };
 
-        let linedefs = wad.read_section(mapidx, "LINEDEFS");
-        let sidedefs = wad.read_section(mapidx, "SIDEDEFS");
-        let vertexes = wad.read_section(mapidx, "VERTEXES");
+        let linedefs: Vec<LineDef> = wad.read_section(mapidx, "LINEDEFS");
+        let sidedefs: Vec<SideDef> = wad.read_section(mapidx, "SIDEDEFS");
+        let vertexes: Vec<Vertex> = wad.read_section(mapidx, "VERTEXES");
         let sectors = wad.read_section(mapidx, "SECTORS");
+
+        let mut sector_lines = Vec::new();
+        for sector_idx in 0..sectors.len() {
+            sector_lines.push(Vec::new());
+            for (side_idx, sidedef) in sidedefs.as_slice().iter().enumerate() {
+                if sidedef.sector == sector_idx as i16 {
+                    for (linedef_idx, linedef) in linedefs.as_slice().iter().enumerate() {
+                        if linedef.front_sidedef == side_idx as i16
+                            || linedef.back_sidedef == side_idx as i16
+                        {
+                            let start_vertex =
+                                &vertexes[linedefs[linedef_idx].start_vertex as usize];
+                            let end_vertex = &vertexes[linedefs[linedef_idx].end_vertex as usize];
+                            let start_point = [start_vertex.x as f32, start_vertex.y as f32];
+                            let end_point = [end_vertex.x as f32, end_vertex.y as f32];
+                            sector_lines[sector_idx].push((start_point, end_point));
+                        }
+                    }
+                }
+            }
+
+            // Try to form polygons
+            let mut polygons = Vec::new();
+            let mut hole_idx = Vec::new();
+            while !sector_lines[sector_idx].is_empty() {
+                let line = sector_lines[sector_idx].remove(0);
+
+                polygons.push([line.0, line.1].to_vec());
+
+                let current_poly = polygons.last_mut().unwrap();
+
+                loop {
+                    let mut index = None;
+                    for (i, line) in sector_lines[sector_idx].iter().enumerate() {
+                        if line.0 == *current_poly.first().unwrap() {
+                            current_poly.insert(0, line.1);
+                            index = Some(i);
+                            break;
+                        } else if line.1 == *current_poly.first().unwrap() {
+                            current_poly.insert(0, line.0);
+                            index = Some(i);
+                            break;
+                        } else if line.0 == *current_poly.last().unwrap() {
+                            current_poly.push(line.1);
+                            index = Some(i);
+                            break;
+                        } else if line.1 == *current_poly.last().unwrap() {
+                            current_poly.push(line.0);
+                            index = Some(i);
+                            break;
+                        }
+                    }
+                    if let Some(i) = index {
+                        sector_lines[sector_idx].remove(i);
+                    } else {
+                        break;
+                    }
+                }
+                if current_poly.first().unwrap() == current_poly.last().unwrap() {
+                    current_poly.pop();
+                }
+                if hole_idx.is_empty() {
+                    hole_idx.push(current_poly.len());
+                } else {
+                    hole_idx.push(hole_idx.last().unwrap() + current_poly.len());
+                }
+            }
+            hole_idx.pop();
+            let datas = polygons
+                .into_iter()
+                .flatten()
+                .collect::<Vec<[f32; 2]>>()
+                .into_iter()
+                .flatten()
+                .collect::<Vec<f32>>();
+            let result = earcutr::earcut(&datas, &hole_idx, 2);
+
+            println!("apero");
+        }
 
         let map = WadMap {
             linedefs,
