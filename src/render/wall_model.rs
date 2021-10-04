@@ -28,6 +28,7 @@ const WALL_VERT_STR: &str = include_str!("wall.vert");
 
 impl WallModel {
     pub fn new(texture: u32) -> Self {
+        unsafe { DoomGl::gl().Enable(gl::CULL_FACE) };
         let mut material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
         let view_att = MaterialParam::from_uniform("view\0", &mut material);
         let persp_att = MaterialParam::from_uniform("proj\0", &mut material);
@@ -101,6 +102,8 @@ impl WallModel {
 
         let gl = DoomGl::gl();
         unsafe {
+            gl.Enable(gl::CULL_FACE);
+
             gl.BindVertexArray(self.vao);
             gl.BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ib);
         }

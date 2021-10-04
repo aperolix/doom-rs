@@ -45,8 +45,8 @@ extern "system" fn gl_debug_message_callback(
         gl::DEBUG_SEVERITY_HIGH => "High",
         gl::DEBUG_SEVERITY_MEDIUM => "Medium",
         gl::DEBUG_SEVERITY_LOW => "Low",
-        gl::DEBUG_SEVERITY_NOTIFICATION => "Notification",
-        _ => "<sev not known",
+        gl::DEBUG_SEVERITY_NOTIFICATION => return, //"Notification",
+        _ => "<sev not known>",
     };
 
     let message = unsafe { std::ffi::CStr::from_ptr(message) };

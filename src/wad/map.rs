@@ -5,6 +5,7 @@ use crate::{
     camera::Camera,
     render::{
         doom_gl::{gl, DoomGl, GVertex},
+        flat_model::FlatModel,
         wall_model::WallModel,
     },
 };
@@ -13,7 +14,7 @@ use super::{file::WadFile, textures::Texture};
 use crate::sys::content::Content;
 
 use bitflags::bitflags;
-use cgmath::{InnerSpace, Matrix4, Point2, Vector2, Vector3};
+use cgmath::{InnerSpace, Matrix4, Vector2, Vector3};
 
 bitflags! {
     struct LinedefFlags: i16 {
@@ -102,6 +103,7 @@ pub struct WadMap {
 
     vbuffer: RefCell<Vec<GVertex>>,
     walls: RefCell<Vec<WallModel>>,
+    flats: RefCell<Vec<FlatModel>>,
 }
 
 impl WadMap {
@@ -436,6 +438,10 @@ impl WadMap {
             for s in self.walls.borrow().iter() {
                 s.render(&view, &camera.persp);
             }
+
+            for f in self.flats.borrow().iter() {
+                f.render(&view, &camera.persp);
+            }
         }
     }
 
@@ -449,7 +455,9 @@ impl WadMap {
         let linedefs: Vec<LineDef> = wad.read_section(mapidx, "LINEDEFS");
         let sidedefs: Vec<SideDef> = wad.read_section(mapidx, "SIDEDEFS");
         let vertexes: Vec<Vertex> = wad.read_section(mapidx, "VERTEXES");
-        let sectors = wad.read_section(mapidx, "SECTORS");
+        let sectors: Vec<Sector> = wad.read_section(mapidx, "SECTORS");
+
+        let mut flats = Vec::new();
 
         let mut sector_lines = Vec::new();
         for sector_idx in 0..sectors.len() {
@@ -525,9 +533,31 @@ impl WadMap {
                 .into_iter()
                 .flatten()
                 .collect::<Vec<f32>>();
-            let result = earcutr::earcut(&datas, &hole_idx, 2);
+            let ib = earcutr::earcut(&datas, &hole_idx, 2);
 
-            println!("apero");
+            let ceil_texture = content
+                .get_texture(
+                    "SW2STARG", //&String::from_utf8(sectors[sector_idx].ceil_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                )
+                .unwrap();
+            let floor_texture = content
+                .get_texture(
+                    "TEKWALL1", //&String::from_utf8(sectors[sector_idx].floor_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                )
+                .unwrap();
+
+            let mut model = FlatModel::new(
+                datas,
+                ib.iter().map(|i| *i as u16).collect(),
+                ceil_texture.id,
+                floor_texture.id,
+            );
+            model.light = sectors[sector_idx].lighting as f32 / 255.0;
+            model.floor = sectors[sector_idx].floor as f32;
+            model.ceil = sectors[sector_idx].ceiling as f32;
+
+            model.init();
+            flats.push(model);
         }
 
         let map = WadMap {
@@ -537,6 +567,7 @@ impl WadMap {
             vertexes,
             vbuffer: RefCell::new(Vec::new()),
             walls: RefCell::new(Vec::new()),
+            flats: RefCell::new(flats),
         };
         map.prepare_render(content);
         Ok(map)

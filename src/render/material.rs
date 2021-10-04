@@ -83,7 +83,7 @@ impl MaterialParam {
         result
     }
 
-    fn bind(&self) {
+    pub fn bind(&self) {
         let gl = DoomGl::gl();
         match self.value.get() {
             MaterialValue::Float(f) => unsafe {
