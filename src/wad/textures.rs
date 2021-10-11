@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::render::doom_gl::DoomGl;
 
-use super::{file::WadFile, patches::Patches};
+use super::{file::WadFile, patches::Patches, playpal::PlayPal};
 
+#[derive(Copy, Clone)]
 pub struct Texture {
     pub width: usize,
     pub height: usize,
@@ -117,5 +118,34 @@ impl Textures {
         list.extend(read_texture_section(file, "TEXTURE2", &patches));
 
         Textures { list }
+    }
+
+    pub fn load_flat(&mut self, file: &WadFile, name: &str) {
+        let section = file.get_section(name).unwrap();
+
+        // Read palettes
+        let playpal = PlayPal::new(file);
+
+        let mut buffer = Vec::new();
+        buffer.resize(4 * 64 as usize * 64 as usize, 0u8);
+
+        for (i, pixel) in section.iter().enumerate() {
+            let color = &playpal.palettes[0].colors[*pixel as usize];
+
+            buffer[i * 4] = color.r;
+            buffer[i * 4 + 1] = color.g;
+            buffer[i * 4 + 2] = color.b;
+            buffer[i * 4 + 3] = 255;
+        }
+
+        let id = DoomGl::get().create_texture(&buffer, 64, 64);
+        self.list.insert(
+            String::from_str(name).unwrap(),
+            Texture {
+                width: 64,
+                height: 64,
+                id,
+            },
+        );
     }
 }

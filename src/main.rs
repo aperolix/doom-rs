@@ -32,7 +32,7 @@ fn main() {
 
     let mut file = WadFile::new(Path::new("base/doom.wad")).unwrap();
 
-    let content = Content::new(&mut file);
+    let content = Content::new(file);
 
     let camera = Rc::new(RefCell::new(Camera::new()));
 

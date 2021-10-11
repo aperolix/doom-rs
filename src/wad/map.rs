@@ -265,7 +265,7 @@ impl WadMap {
 
                 self.prepare_line_render(
                     &mut model_per_texture,
-                    texture,
+                    &texture,
                     line,
                     (front_floor, back_floor),
                     line_offset,
@@ -287,7 +287,7 @@ impl WadMap {
                 }
                 self.prepare_line_render(
                     &mut model_per_texture,
-                    texture,
+                    &texture,
                     line,
                     (back_floor, back_ceil),
                     line_offset,
@@ -309,7 +309,7 @@ impl WadMap {
                 }
                 self.prepare_line_render(
                     &mut model_per_texture,
-                    texture,
+                    &texture,
                     line,
                     (back_ceil, front_ceil),
                     line_offset,
@@ -337,7 +337,7 @@ impl WadMap {
 
                     self.prepare_line_render(
                         &mut model_per_texture,
-                        texture,
+                        &texture,
                         line,
                         (back_floor, front_floor),
                         line_offset,
@@ -359,7 +359,7 @@ impl WadMap {
                     }
                     self.prepare_line_render(
                         &mut model_per_texture,
-                        texture,
+                        &texture,
                         line,
                         (front_floor, front_ceil),
                         line_offset,
@@ -381,7 +381,7 @@ impl WadMap {
                     }
                     self.prepare_line_render(
                         &mut model_per_texture,
-                        texture,
+                        &texture,
                         line,
                         (front_ceil, back_ceil),
                         line_offset,
@@ -446,16 +446,16 @@ impl WadMap {
     }
 
     /// Load the map and prepare render
-    pub fn new(name: &str, wad: &mut WadFile, content: &Content) -> Result<WadMap, String> {
-        let mapidx = match wad.directory.find_section(name, 0) {
+    pub fn new(name: &str, content: &Content) -> Result<WadMap, String> {
+        let mapidx = match content.file.directory.find_section(name, 0) {
             Some(i) => i,
             None => return Err("Map not found".to_string()),
         };
 
-        let linedefs: Vec<LineDef> = wad.read_section(mapidx, "LINEDEFS");
-        let sidedefs: Vec<SideDef> = wad.read_section(mapidx, "SIDEDEFS");
-        let vertexes: Vec<Vertex> = wad.read_section(mapidx, "VERTEXES");
-        let sectors: Vec<Sector> = wad.read_section(mapidx, "SECTORS");
+        let linedefs: Vec<LineDef> = content.file.read_section(mapidx, "LINEDEFS");
+        let sidedefs: Vec<SideDef> = content.file.read_section(mapidx, "SIDEDEFS");
+        let vertexes: Vec<Vertex> = content.file.read_section(mapidx, "VERTEXES");
+        let sectors: Vec<Sector> = content.file.read_section(mapidx, "SECTORS");
 
         let mut flats = Vec::new();
 
@@ -537,12 +537,14 @@ impl WadMap {
 
             let ceil_texture = content
                 .get_texture(
-                    "SW2STARG", //&String::from_utf8(sectors[sector_idx].ceil_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                    &String::from_utf8(sectors[sector_idx].ceil_tex.to_ascii_uppercase().to_vec())
+                        .unwrap(),
                 )
                 .unwrap();
             let floor_texture = content
                 .get_texture(
-                    "TEKWALL1", //&String::from_utf8(sectors[sector_idx].floor_tex.to_ascii_uppercase().to_vec()).unwrap(),
+                    &String::from_utf8(sectors[sector_idx].floor_tex.to_ascii_uppercase().to_vec())
+                        .unwrap(),
                 )
                 .unwrap();
 

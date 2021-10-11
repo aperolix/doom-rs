@@ -84,7 +84,7 @@ impl Patches {
 
             Patches { patches }
         } else {
-            panic!("No PLAYPAL section found");
+            panic!("No PNAMES section found");
         }
     }
 
