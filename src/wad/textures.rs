@@ -127,7 +127,7 @@ impl Textures {
         let playpal = PlayPal::new(file);
 
         let mut buffer = Vec::new();
-        buffer.resize(4 * 64 as usize * 64 as usize, 0u8);
+        buffer.resize(4 * 64 * 64_usize, 0u8);
 
         for (i, pixel) in section.iter().enumerate() {
             let color = &playpal.palettes[0].colors[*pixel as usize];

@@ -10,11 +10,11 @@ use crate::{
     },
 };
 
-use super::{file::WadFile, textures::Texture};
+use super::textures::Texture;
 use crate::sys::content::Content;
 
 use bitflags::bitflags;
-use cgmath::{InnerSpace, Matrix4, Vector2, Vector3};
+use cgmath::{AbsDiffEq, InnerSpace, Matrix4, Vector2, Vector3};
 
 bitflags! {
     struct LinedefFlags: i16 {
@@ -492,19 +492,31 @@ impl WadMap {
                 loop {
                     let mut index = None;
                     for (i, line) in sector_lines[sector_idx].iter().enumerate() {
-                        if line.0 == *current_poly.first().unwrap() {
+                        if line
+                            .0
+                            .abs_diff_eq(current_poly.first().unwrap(), f32::EPSILON)
+                        {
                             current_poly.insert(0, line.1);
                             index = Some(i);
                             break;
-                        } else if line.1 == *current_poly.first().unwrap() {
+                        } else if line
+                            .1
+                            .abs_diff_eq(current_poly.first().unwrap(), f32::EPSILON)
+                        {
                             current_poly.insert(0, line.0);
                             index = Some(i);
                             break;
-                        } else if line.0 == *current_poly.last().unwrap() {
+                        } else if line
+                            .0
+                            .abs_diff_eq(current_poly.last().unwrap(), f32::EPSILON)
+                        {
                             current_poly.push(line.1);
                             index = Some(i);
                             break;
-                        } else if line.1 == *current_poly.last().unwrap() {
+                        } else if line
+                            .1
+                            .abs_diff_eq(current_poly.last().unwrap(), f32::EPSILON)
+                        {
                             current_poly.push(line.0);
                             index = Some(i);
                             break;
@@ -516,7 +528,11 @@ impl WadMap {
                         break;
                     }
                 }
-                if current_poly.first().unwrap() == current_poly.last().unwrap() {
+                if current_poly
+                    .first()
+                    .unwrap()
+                    .abs_diff_eq(current_poly.last().unwrap(), f32::EPSILON)
+                {
                     current_poly.pop();
                 }
                 if hole_idx.is_empty() {

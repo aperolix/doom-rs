@@ -1,5 +1,4 @@
-use std::borrow::Borrow;
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::RefCell;
 
 use crate::wad::file::WadFile;
 use crate::wad::map::WadMap;
@@ -23,7 +22,7 @@ impl Content {
     }
 
     pub fn get_texture(&self, name: &str) -> Option<Texture> {
-        if name.chars().next() == Some('-') {
+        if name.starts_with('-') {
             return None;
         }
         if let Some(t) = self.textures.borrow().list.get(&name.to_string()) {

@@ -30,7 +30,7 @@ fn main() {
     DoomGl::init(windowed_context.context());
     let mut input = Input::new();
 
-    let mut file = WadFile::new(Path::new("base/doom.wad")).unwrap();
+    let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
 
     let content = Content::new(file);
 
@@ -47,7 +47,7 @@ fn main() {
         *control_flow = ControlFlow::Poll;
 
         match event {
-            Event::LoopDestroyed => return,
+            Event::LoopDestroyed => (),
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::Focused(f) => {
                     focus = f;
