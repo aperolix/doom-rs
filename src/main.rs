@@ -76,14 +76,12 @@ fn main() {
                 ..
             } => {
                 if focus {
-                    println!("move");
                     input.register_mouse_move(delta)
                 }
             }
 
             Event::MainEventsCleared => {
                 if focus {
-                    println!("update");
                     camera.try_borrow_mut().unwrap().update();
                 }
                 content.maps[0].render(&camera.try_borrow_mut().unwrap());
