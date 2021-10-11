@@ -76,17 +76,20 @@ fn main() {
                 ..
             } => {
                 if focus {
+                    println!("move");
                     input.register_mouse_move(delta)
                 }
             }
 
-            Event::RedrawRequested(_) => (),
+            Event::MainEventsCleared => {
+                if focus {
+                    println!("update");
+                    camera.try_borrow_mut().unwrap().update();
+                }
+                content.maps[0].render(&camera.try_borrow_mut().unwrap());
+                windowed_context.swap_buffers().unwrap();
+            }
             _ => (),
         }
-        if focus {
-            camera.try_borrow_mut().unwrap().update();
-        }
-        content.maps[0].render(&camera.try_borrow_mut().unwrap());
-        windowed_context.swap_buffers().unwrap();
     });
 }
