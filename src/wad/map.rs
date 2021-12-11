@@ -1,11 +1,12 @@
 use core::str;
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, str::FromStr};
 
 use crate::{
     camera::Camera,
     render::{
         doom_gl::{gl, DoomGl, GVertex},
         flat_model::FlatModel,
+        material::Material,
         wall_model::WallModel,
     },
 };
@@ -184,7 +185,9 @@ impl WadMap {
         let wall_index = if let Some(i) = model_per_texture.get(&texture.id) {
             *i
         } else {
-            self.walls.borrow_mut().push(WallModel::new(texture.id));
+            self.walls
+                .borrow_mut()
+                .push(WallModel::new(texture.id, texture.sky));
             let index = self.walls.borrow().len() - 1;
             model_per_texture.insert(texture.id, index);
             index
@@ -220,6 +223,16 @@ impl WadMap {
             } else {
                 (None, None)
             };
+
+            let mut back_sector_is_sky = false;
+            if let Some(back) = back_sector {
+                let sky = [
+                    'F' as u8, '_' as u8, 'S' as u8, 'K' as u8, 'Y' as u8, '1' as u8,
+                ];
+                if back.ceil_tex[0..6] == sky {
+                    back_sector_is_sky = true;
+                }
+            }
 
             let front_floor = front_sector.floor as f32;
             let front_ceil = front_sector.ceiling as f32;
@@ -296,9 +309,12 @@ impl WadMap {
             }
 
             // upper
-            if let Some(texture) = content.get_texture(
-                &String::from_utf8(front_side.upper_tex.to_ascii_uppercase().to_vec()).unwrap(),
-            ) {
+            let texture_name = if back_sector_is_sky {
+                String::from_str("F_SKY1").unwrap()
+            } else {
+                String::from_utf8(front_side.upper_tex.to_ascii_uppercase().to_vec()).unwrap()
+            };
+            if let Some(texture) = content.get_texture(&texture_name) {
                 let line_offset;
                 if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
                     let off = (front_ceil - back_ceil) / texture.height as f32;
@@ -551,12 +567,10 @@ impl WadMap {
                 .collect::<Vec<f32>>();
             let ib = earcutr::earcut(&datas, &hole_idx, 2);
 
-            let ceil_texture = content
-                .get_texture(
-                    &String::from_utf8(sectors[sector_idx].ceil_tex.to_ascii_uppercase().to_vec())
-                        .unwrap(),
-                )
-                .unwrap();
+            let ceil_texture = content.get_texture(
+                &String::from_utf8(sectors[sector_idx].ceil_tex.to_ascii_uppercase().to_vec())
+                    .unwrap(),
+            );
             let floor_texture = content
                 .get_texture(
                     &String::from_utf8(sectors[sector_idx].floor_tex.to_ascii_uppercase().to_vec())
@@ -567,8 +581,12 @@ impl WadMap {
             let mut model = FlatModel::new(
                 datas,
                 ib.iter().map(|i| *i as u16).collect(),
-                ceil_texture.id,
+                match ceil_texture {
+                    Some(t) => t.id,
+                    _ => u32::MAX,
+                },
                 floor_texture.id,
+                ceil_texture.unwrap().sky,
             );
             model.light = sectors[sector_idx].lighting as f32 / 255.0;
             model.floor = sectors[sector_idx].floor as f32;

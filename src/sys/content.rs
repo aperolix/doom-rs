@@ -25,14 +25,18 @@ impl Content {
         if name.starts_with('-') {
             return None;
         }
-        if let Some(t) = self.textures.borrow().list.get(&name.to_string()) {
+        let mut real_name = name;
+        if real_name.starts_with("F_SKY1") {
+            real_name = "SKY1";
+        }
+        if let Some(t) = self.textures.borrow().list.get(&real_name.to_string()) {
             return Some(*t);
         }
 
         // If don't exists, try to load flat
-        self.textures.borrow_mut().load_flat(&self.file, name);
+        self.textures.borrow_mut().load_flat(&self.file, real_name);
 
-        if let Some(t) = self.textures.borrow().list.get(&name.to_string()) {
+        if let Some(t) = self.textures.borrow().list.get(&real_name.to_string()) {
             return Some(*t);
         }
         None

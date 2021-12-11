@@ -9,6 +9,7 @@ pub struct Texture {
     pub width: usize,
     pub height: usize,
     pub id: u32,
+    pub sky: bool,
 }
 
 pub struct Textures {
@@ -101,10 +102,56 @@ fn read_texture_section(
                 String::from_utf8(texture_info[0].name.to_ascii_uppercase().to_vec()).unwrap();
             let id = DoomGl::get().create_texture(&buffer, width as i32, height as i32);
 
-            result.insert(name, Texture { width, height, id });
+            result.insert(
+                name,
+                Texture {
+                    width,
+                    height,
+                    id,
+                    sky: false,
+                },
+            );
         }
     }
 
+    result
+}
+
+fn read_sky(patches: &Patches) -> HashMap<String, Texture> {
+    let mut sky_num = 1;
+    let mut result = HashMap::new();
+    loop {
+        let sky_name = format!("SKY{}", sky_num);
+        if let Some(p) = patches.get_patch_by_name(&sky_name) {
+            // Compose texture
+            let mut buffer = Vec::new();
+            buffer.resize(4 * p.width as usize * p.height as usize, 1u8);
+
+            for x in 0..p.width {
+                for y in 0..p.height {
+                    let index = (y * p.width + x) * 4;
+
+                    buffer[index as usize] = p.image[index];
+                    buffer[index as usize + 1] = p.image[index + 1];
+                    buffer[index as usize + 2] = p.image[index + 2];
+                    buffer[index as usize + 3] = 255u8;
+                }
+            }
+            let id = DoomGl::get().create_texture(&buffer, p.width as i32, p.height as i32);
+            result.insert(
+                sky_name,
+                Texture {
+                    width: p.width,
+                    height: p.height,
+                    id,
+                    sky: true,
+                },
+            );
+        } else {
+            break;
+        }
+        sky_num += 1;
+    }
     result
 }
 
@@ -116,6 +163,7 @@ impl Textures {
         // Read the TEXTUREX
         let mut list = read_texture_section(file, "TEXTURE1", &patches);
         list.extend(read_texture_section(file, "TEXTURE2", &patches));
+        list.extend(read_sky(&patches));
 
         Textures { list }
     }
@@ -145,6 +193,7 @@ impl Textures {
                 width: 64,
                 height: 64,
                 id,
+                sky: false,
             },
         );
     }

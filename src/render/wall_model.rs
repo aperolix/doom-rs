@@ -18,21 +18,25 @@ pub struct WallModel {
     ib: u32,
     view_att: Rc<MaterialParam>,
     persp_att: Rc<MaterialParam>,
+    sky_att: Rc<MaterialParam>,
     vao: u32,
     img_att: Rc<MaterialParam>,
     texture: u32,
+    sky: bool,
 }
 
 const WALL_FRAG_STR: &str = include_str!("wall.frag");
 const WALL_VERT_STR: &str = include_str!("wall.vert");
 
 impl WallModel {
-    pub fn new(texture: u32) -> Self {
+    pub fn new(texture: u32, sky: bool) -> Self {
         unsafe { DoomGl::gl().Enable(gl::CULL_FACE) };
         let mut material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
+
         let view_att = MaterialParam::from_uniform("view\0", &mut material);
         let persp_att = MaterialParam::from_uniform("proj\0", &mut material);
         let img_att = MaterialParam::from_uniform("image\0", &mut material);
+        let sky_att = MaterialParam::from_uniform("sky\0", &mut material);
 
         WallModel {
             ibuffer: Vec::new(),
@@ -40,9 +44,11 @@ impl WallModel {
             ib: 0,
             view_att,
             persp_att,
+            sky_att,
             vao: 0,
             img_att,
             texture,
+            sky,
         }
     }
     pub fn init(&mut self) {
@@ -99,6 +105,7 @@ impl WallModel {
         self.view_att.set_value(MaterialValue::Matrix(*view));
         self.persp_att.set_value(MaterialValue::Matrix(*persp));
         self.img_att.set_value(MaterialValue::Int(0));
+        self.sky_att.set_value(MaterialValue::Int(self.sky as i32));
 
         let gl = DoomGl::gl();
         unsafe {

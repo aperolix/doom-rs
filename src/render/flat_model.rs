@@ -21,10 +21,13 @@ pub struct FlatModel {
     persp_att: Rc<MaterialParam>,
     view_att: Rc<MaterialParam>,
     img_att: Rc<MaterialParam>,
+    sky_att: Rc<MaterialParam>,
 
     vao: u32,
     ib: u32,
     vb: u32,
+
+    sky: bool,
 }
 
 const FLAT_FRAG_STR: &str = include_str!("flat.frag");
@@ -36,6 +39,7 @@ impl FlatModel {
         ibuffer: Vec<u16>,
         ceil_texture: u32,
         floor_texture: u32,
+        sky: bool,
     ) -> Self {
         unsafe { DoomGl::gl().Disable(gl::CULL_FACE) };
         let mut material = Material::new(FLAT_VERT_STR, FLAT_FRAG_STR);
@@ -45,6 +49,7 @@ impl FlatModel {
         let view_att = MaterialParam::from_uniform("view\0", &mut material);
         let persp_att = MaterialParam::from_uniform("proj\0", &mut material);
         let img_att = MaterialParam::from_uniform("image\0", &mut material);
+        let sky_att = MaterialParam::from_uniform("sky\0", &mut material);
 
         height_att.set_value(MaterialValue::Float(0.0));
 
@@ -55,6 +60,7 @@ impl FlatModel {
             persp_att,
             view_att,
             img_att,
+            sky_att,
             height_att,
             light_att,
             light: 1.0,
@@ -65,6 +71,7 @@ impl FlatModel {
             vb: 0,
             ceil_texture,
             floor_texture,
+            sky,
         }
     }
 
@@ -117,6 +124,7 @@ impl FlatModel {
         self.persp_att.set_value(MaterialValue::Matrix(*persp));
         self.img_att.set_value(MaterialValue::Int(0));
         self.light_att.set_value(MaterialValue::Float(self.light));
+        self.sky_att.set_value(MaterialValue::Int(0));
 
         let gl = DoomGl::gl();
         unsafe {
@@ -132,30 +140,37 @@ impl FlatModel {
 
         unsafe {
             // floor
-            self.height_att.set_value(MaterialValue::Float(self.floor));
-            self.height_att.bind();
+            if self.floor_texture != u32::MAX {
+                self.height_att.set_value(MaterialValue::Float(self.floor));
+                self.height_att.bind();
 
-            gl.ActiveTexture(gl::TEXTURE0);
-            gl.BindTexture(gl::TEXTURE_2D, self.floor_texture);
-            gl.DrawElements(
-                gl::TRIANGLES,
-                self.ibuffer.len() as i32,
-                gl::UNSIGNED_SHORT,
-                std::ptr::null(),
-            );
+                gl.ActiveTexture(gl::TEXTURE0);
+                gl.BindTexture(gl::TEXTURE_2D, self.floor_texture);
+                gl.DrawElements(
+                    gl::TRIANGLES,
+                    self.ibuffer.len() as i32,
+                    gl::UNSIGNED_SHORT,
+                    std::ptr::null(),
+                );
+            }
+
+            self.sky_att.set_value(MaterialValue::Int(self.sky as i32));
+            self.material.bind();
 
             // Ceil
-            self.height_att.set_value(MaterialValue::Float(self.ceil));
-            self.height_att.bind();
+            if self.ceil_texture != u32::MAX {
+                self.height_att.set_value(MaterialValue::Float(self.ceil));
+                self.height_att.bind();
 
-            gl.ActiveTexture(gl::TEXTURE0);
-            gl.BindTexture(gl::TEXTURE_2D, self.ceil_texture);
-            gl.DrawElements(
-                gl::TRIANGLES,
-                self.ibuffer.len() as i32,
-                gl::UNSIGNED_SHORT,
-                std::ptr::null(),
-            );
+                gl.ActiveTexture(gl::TEXTURE0);
+                gl.BindTexture(gl::TEXTURE_2D, self.ceil_texture);
+                gl.DrawElements(
+                    gl::TRIANGLES,
+                    self.ibuffer.len() as i32,
+                    gl::UNSIGNED_SHORT,
+                    std::ptr::null(),
+                );
+            }
 
             gl.BindVertexArray(0);
             assert!(gl.GetError() == 0);

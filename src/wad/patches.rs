@@ -7,6 +7,7 @@ pub struct Patch {
     pub width: usize,
     pub height: usize,
     pub image: Vec<u8>,
+    pub name: String,
 }
 
 pub struct Patches {
@@ -59,6 +60,7 @@ fn load_image(image: &[u8], pal: &Palette) -> Patch {
         width: header[0].width as usize,
         height: header[0].height as usize,
         image: buffer,
+        name: String::new(),
     }
 }
 
@@ -78,7 +80,9 @@ impl Patches {
                 name.make_ascii_uppercase();
 
                 if let Some(image) = file.get_section(name.as_str()) {
-                    patches.push(load_image(image, &playpal.palettes[0]));
+                    let mut patch = load_image(image, &playpal.palettes[0]);
+                    patch.name = name;
+                    patches.push(patch);
                 }
             }
 
@@ -90,5 +94,9 @@ impl Patches {
 
     pub fn get_patch(&self, index: usize) -> &Patch {
         &self.patches[index]
+    }
+
+    pub fn get_patch_by_name(&self, name: &String) -> Option<&Patch> {
+        self.patches.iter().find(|&p| p.name.starts_with(name))
     }
 }
