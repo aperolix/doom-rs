@@ -58,4 +58,14 @@ impl WadDirectory {
     pub fn get_lump(&self, index: usize) -> &FileLump {
         &self.files[index]
     }
+
+    pub fn get_lump_index(&self, name: &str) -> Option<usize> {
+        let name = &name.as_bytes()[0..name.len()];
+        for i in 0..self.files.len() {
+            if self.files[i].name[0..name.len()].eq(name) {
+                return Some(i);
+            }
+        }
+        None
+    }
 }

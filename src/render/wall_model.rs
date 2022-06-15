@@ -2,9 +2,12 @@ use std::rc::Rc;
 
 use cgmath::Matrix4;
 
-use crate::render::{
-    doom_gl::DoomGl,
-    material::{MaterialValue, Stride},
+use crate::{
+    render::{
+        doom_gl::DoomGl,
+        material::{MaterialValue, Stride},
+    },
+    sys::textures::Texture,
 };
 
 use super::{
@@ -22,14 +25,13 @@ pub struct WallModel {
     vao: u32,
     img_att: Rc<MaterialParam>,
     texture: u32,
-    sky: bool,
 }
 
 const WALL_FRAG_STR: &str = include_str!("wall.frag");
 const WALL_VERT_STR: &str = include_str!("wall.vert");
 
 impl WallModel {
-    pub fn new(texture: u32, sky: bool) -> Self {
+    pub fn new(texture: &Texture) -> Self {
         unsafe { DoomGl::gl().Enable(gl::CULL_FACE) };
         let mut material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
 
@@ -47,8 +49,7 @@ impl WallModel {
             sky_att,
             vao: 0,
             img_att,
-            texture,
-            sky,
+            texture: texture.id,
         }
     }
     pub fn init(&mut self) {
@@ -105,7 +106,7 @@ impl WallModel {
         self.view_att.set_value(MaterialValue::Matrix(*view));
         self.persp_att.set_value(MaterialValue::Matrix(*persp));
         self.img_att.set_value(MaterialValue::Int(0));
-        self.sky_att.set_value(MaterialValue::Int(self.sky as i32));
+        self.sky_att.set_value(MaterialValue::Int(0));
 
         let gl = DoomGl::gl();
         unsafe {

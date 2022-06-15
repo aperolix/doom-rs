@@ -26,8 +26,6 @@ pub struct FlatModel {
     vao: u32,
     ib: u32,
     vb: u32,
-
-    sky: bool,
 }
 
 const FLAT_FRAG_STR: &str = include_str!("flat.frag");
@@ -39,7 +37,6 @@ impl FlatModel {
         ibuffer: Vec<u16>,
         ceil_texture: u32,
         floor_texture: u32,
-        sky: bool,
     ) -> Self {
         unsafe { DoomGl::gl().Disable(gl::CULL_FACE) };
         let mut material = Material::new(FLAT_VERT_STR, FLAT_FRAG_STR);
@@ -71,7 +68,6 @@ impl FlatModel {
             vb: 0,
             ceil_texture,
             floor_texture,
-            sky,
         }
     }
 
@@ -154,7 +150,7 @@ impl FlatModel {
                 );
             }
 
-            self.sky_att.set_value(MaterialValue::Int(self.sky as i32));
+            self.sky_att.set_value(MaterialValue::Int(0));
             self.material.bind();
 
             // Ceil

@@ -6,12 +6,12 @@ use crate::{
     render::{
         doom_gl::{gl, DoomGl, GVertex},
         flat_model::FlatModel,
-        material::Material,
         wall_model::WallModel,
     },
+    sys::textures::Texture,
 };
 
-use super::textures::Texture;
+//use super::doom_textures::Texture;
 use crate::sys::content::Content;
 
 use bitflags::bitflags;
@@ -175,21 +175,19 @@ impl WadMap {
     /// Prepare wall side rendering
     fn prepare_line_render(
         &self,
-        model_per_texture: &mut HashMap<u32, usize>,
+        model_per_texture: &mut HashMap<String, usize>,
         texture: &Texture,
         line: (u16, u16),
         heights: (f32, f32),
         texture_offset: (f32, f32),
         light: f32,
     ) {
-        let wall_index = if let Some(i) = model_per_texture.get(&texture.id) {
+        let wall_index = if let Some(i) = model_per_texture.get(&texture.name) {
             *i
         } else {
-            self.walls
-                .borrow_mut()
-                .push(WallModel::new(texture.id, texture.sky));
+            self.walls.borrow_mut().push(WallModel::new(texture));
             let index = self.walls.borrow().len() - 1;
-            model_per_texture.insert(texture.id, index);
+            model_per_texture.insert(texture.name.clone(), index);
             index
         };
 
@@ -226,9 +224,7 @@ impl WadMap {
 
             let mut back_sector_is_sky = false;
             if let Some(back) = back_sector {
-                let sky = [
-                    'F' as u8, '_' as u8, 'S' as u8, 'K' as u8, 'Y' as u8, '1' as u8,
-                ];
+                let sky = [b'F', b'_', b'S', b'K', b'Y', b'1'];
                 if back.ceil_tex[0..6] == sky {
                     back_sector_is_sky = true;
                 }
@@ -264,21 +260,21 @@ impl WadMap {
             let texture_offset = (front_side.x_offset as f32, -front_side.y_offset as f32);
 
             // low
-            if let Some(texture) = content.get_texture(
+            if let Some(texture) = content.get_textures().find_texture(
                 &String::from_utf8(front_side.lower_tex.to_ascii_uppercase().to_vec()).unwrap(),
             ) {
-                let line_offset;
-                if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) != LinedefFlags::NONE {
-                    let off = (wall_extent.1 - wall_extent.0) / texture.height as f32;
-                    let off = (1.0 - off % 1.0) * texture.height as f32;
-                    line_offset = (texture_offset.0, texture_offset.1 + off);
-                } else {
-                    line_offset = texture_offset;
-                }
+                let line_offset =
+                    if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) != LinedefFlags::NONE {
+                        let off = (wall_extent.1 - wall_extent.0) / texture.height as f32;
+                        let off = (1.0 - off % 1.0) * texture.height as f32;
+                        (texture_offset.0, texture_offset.1 + off)
+                    } else {
+                        texture_offset
+                    };
 
                 self.prepare_line_render(
                     &mut model_per_texture,
-                    &texture,
+                    texture,
                     line,
                     (front_floor, back_floor),
                     line_offset,
@@ -287,20 +283,20 @@ impl WadMap {
             }
 
             // mid
-            if let Some(texture) = content.get_texture(
+            if let Some(texture) = content.get_textures().find_texture(
                 &String::from_utf8(front_side.middle_tex.to_ascii_uppercase().to_vec()).unwrap(),
             ) {
-                let line_offset;
-                if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) == LinedefFlags::NONE {
-                    let off = (back_ceil - back_floor) / texture.height as f32;
-                    let off = (1.0 - off % 1.0) * texture.height as f32;
-                    line_offset = (texture_offset.0, texture_offset.1 + off);
-                } else {
-                    line_offset = texture_offset;
-                }
+                let line_offset =
+                    if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) == LinedefFlags::NONE {
+                        let off = (back_ceil - back_floor) / texture.height as f32;
+                        let off = (1.0 - off % 1.0) * texture.height as f32;
+                        (texture_offset.0, texture_offset.1 + off)
+                    } else {
+                        texture_offset
+                    };
                 self.prepare_line_render(
                     &mut model_per_texture,
-                    &texture,
+                    texture,
                     line,
                     (back_floor, back_ceil),
                     line_offset,
@@ -314,18 +310,18 @@ impl WadMap {
             } else {
                 String::from_utf8(front_side.upper_tex.to_ascii_uppercase().to_vec()).unwrap()
             };
-            if let Some(texture) = content.get_texture(&texture_name) {
-                let line_offset;
-                if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
-                    let off = (front_ceil - back_ceil) / texture.height as f32;
-                    let off = (1.0 - off % 1.0) * texture.height as f32;
-                    line_offset = (texture_offset.0, texture_offset.1 + off);
-                } else {
-                    line_offset = texture_offset;
-                }
+            if let Some(texture) = content.get_textures().find_texture(&texture_name) {
+                let line_offset =
+                    if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
+                        let off = (front_ceil - back_ceil) / texture.height as f32;
+                        let off = (1.0 - off % 1.0) * texture.height as f32;
+                        (texture_offset.0, texture_offset.1 + off)
+                    } else {
+                        texture_offset
+                    };
                 self.prepare_line_render(
                     &mut model_per_texture,
-                    &texture,
+                    texture,
                     line,
                     (back_ceil, front_ceil),
                     line_offset,
@@ -339,21 +335,21 @@ impl WadMap {
             if let Some(b) = back_side {
                 let texture_offset = (b.x_offset as f32, b.y_offset as f32);
                 // low
-                if let Some(texture) = content.get_texture(
+                if let Some(texture) = content.get_textures().find_texture(
                     &String::from_utf8(b.lower_tex.to_ascii_uppercase().to_vec()).unwrap(),
                 ) {
-                    let line_offset;
-                    if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) != LinedefFlags::NONE {
-                        let off = (wall_extent.0 - wall_extent.1) / texture.height as f32;
-                        let off = (1.0 - off % 1.0) * texture.height as f32;
-                        line_offset = (texture_offset.0, texture_offset.1 + off);
-                    } else {
-                        line_offset = texture_offset;
-                    }
+                    let line_offset =
+                        if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) != LinedefFlags::NONE {
+                            let off = (wall_extent.0 - wall_extent.1) / texture.height as f32;
+                            let off = (1.0 - off % 1.0) * texture.height as f32;
+                            (texture_offset.0, texture_offset.1 + off)
+                        } else {
+                            texture_offset
+                        };
 
                     self.prepare_line_render(
                         &mut model_per_texture,
-                        &texture,
+                        texture,
                         line,
                         (back_floor, front_floor),
                         line_offset,
@@ -362,20 +358,20 @@ impl WadMap {
                 }
 
                 // mid
-                if let Some(texture) = content.get_texture(
+                if let Some(texture) = content.get_textures().find_texture(
                     &String::from_utf8(b.middle_tex.to_ascii_uppercase().to_vec()).unwrap(),
                 ) {
-                    let line_offset;
-                    if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) == LinedefFlags::NONE {
-                        let off = (back_ceil - back_floor) / texture.height as f32;
-                        let off = (1.0 - off % 1.0) * texture.height as f32;
-                        line_offset = (texture_offset.0, texture_offset.1 + off);
-                    } else {
-                        line_offset = texture_offset;
-                    }
+                    let line_offset =
+                        if (l.flags & LinedefFlags::LOWER_TEX_UNPEGGED) == LinedefFlags::NONE {
+                            let off = (back_ceil - back_floor) / texture.height as f32;
+                            let off = (1.0 - off % 1.0) * texture.height as f32;
+                            (texture_offset.0, texture_offset.1 + off)
+                        } else {
+                            texture_offset
+                        };
                     self.prepare_line_render(
                         &mut model_per_texture,
-                        &texture,
+                        texture,
                         line,
                         (front_floor, front_ceil),
                         line_offset,
@@ -384,20 +380,20 @@ impl WadMap {
                 }
 
                 // upper
-                if let Some(texture) = content.get_texture(
+                if let Some(texture) = content.get_textures().find_texture(
                     &String::from_utf8(b.upper_tex.to_ascii_uppercase().to_vec()).unwrap(),
                 ) {
-                    let line_offset;
-                    if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
-                        let off = (back_ceil - front_ceil) / texture.height as f32;
-                        let off = (1.0 - off % 1.0) * texture.height as f32;
-                        line_offset = (texture_offset.0, texture_offset.1 + off);
-                    } else {
-                        line_offset = texture_offset;
-                    }
+                    let line_offset =
+                        if (l.flags & LinedefFlags::UPPER_TEX_UNPEGGED) != LinedefFlags::NONE {
+                            let off = (back_ceil - front_ceil) / texture.height as f32;
+                            let off = (1.0 - off % 1.0) * texture.height as f32;
+                            (texture_offset.0, texture_offset.1 + off)
+                        } else {
+                            texture_offset
+                        };
                     self.prepare_line_render(
                         &mut model_per_texture,
-                        &texture,
+                        texture,
                         line,
                         (front_ceil, back_ceil),
                         line_offset,
@@ -567,12 +563,13 @@ impl WadMap {
                 .collect::<Vec<f32>>();
             let ib = earcutr::earcut(&datas, &hole_idx, 2);
 
-            let ceil_texture = content.get_texture(
+            let ceil_texture = content.get_textures().find_texture(
                 &String::from_utf8(sectors[sector_idx].ceil_tex.to_ascii_uppercase().to_vec())
                     .unwrap(),
             );
             let floor_texture = content
-                .get_texture(
+                .get_textures()
+                .find_texture(
                     &String::from_utf8(sectors[sector_idx].floor_tex.to_ascii_uppercase().to_vec())
                         .unwrap(),
                 )
@@ -586,7 +583,6 @@ impl WadMap {
                     _ => u32::MAX,
                 },
                 floor_texture.id,
-                ceil_texture.unwrap().sky,
             );
             model.light = sectors[sector_idx].lighting as f32 / 255.0;
             model.floor = sectors[sector_idx].floor as f32;

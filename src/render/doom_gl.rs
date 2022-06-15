@@ -90,12 +90,25 @@ impl DoomGl {
         DoomGl::get().gl
     }
 
-    pub fn create_texture(&self, image: &[u8], width: i32, height: i32) -> u32 {
+    pub fn gen_texture_id(&self) -> u32 {
         let mut id = [0u32; 1];
         unsafe {
             self.gl.GenTextures(1, id.as_mut_ptr());
             assert!(self.gl.GetError() == 0);
-            self.gl.BindTexture(gl::TEXTURE_2D, id[0]);
+        }
+
+        id[0]
+    }
+
+    pub fn fill_texture_with_buffer(
+        &self,
+        texture_id: u32,
+        width: i32,
+        height: i32,
+        buffer: &[u8],
+    ) {
+        unsafe {
+            self.gl.BindTexture(gl::TEXTURE_2D, texture_id);
             assert!(self.gl.GetError() == 0);
             self.gl
                 .TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
@@ -118,12 +131,17 @@ impl DoomGl {
                 0,
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
-                image.as_ptr() as *const _,
+                buffer.as_ptr() as *const _,
             );
             assert!(self.gl.GetError() == 0);
             self.gl.GenerateMipmap(gl::TEXTURE_2D);
         }
+    }
 
-        id[0]
+    #[allow(dead_code)]
+    pub fn create_texture(&self, image: &[u8], width: i32, height: i32) -> u32 {
+        let id = self.gen_texture_id();
+        self.fill_texture_with_buffer(id, width, height, image);
+        id
     }
 }

@@ -16,5 +16,5 @@ void main() {
     vec4 newPos = vec4(position.x, position.y, position.z, 1.0);
 	gl_Position = proj * view * newPos;
     outData.light = light;
-	outData.uv = uv;
+	outData.uv = uv;	
 }
