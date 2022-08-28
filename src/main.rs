@@ -8,7 +8,7 @@ use glutin::{
     dpi::{PhysicalSize, Size},
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{CursorGrabMode, WindowBuilder},
     ContextBuilder,
 };
 use input::Input;
@@ -38,8 +38,8 @@ fn main() {
 
     input.listeners.push(camera.clone());
 
-    let mut focus = true;
-    windowed_context.window().set_cursor_grab(true).unwrap();
+    let mut focus = CursorGrabMode::Confined;
+    windowed_context.window().set_cursor_grab(focus).unwrap();
     windowed_context.window().set_cursor_visible(false);
 
     el.run(move |event, _, control_flow| {
@@ -50,9 +50,15 @@ fn main() {
             Event::LoopDestroyed => (),
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::Focused(f) => {
-                    focus = f;
+                    focus = if f {
+                        CursorGrabMode::Confined
+                    } else {
+                        CursorGrabMode::None
+                    };
                     windowed_context.window().set_cursor_grab(focus).unwrap();
-                    windowed_context.window().set_cursor_visible(!focus);
+                    windowed_context
+                        .window()
+                        .set_cursor_visible(focus != CursorGrabMode::None);
                 }
                 WindowEvent::Resized(physical_size) => windowed_context.resize(physical_size),
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
@@ -65,7 +71,7 @@ fn main() {
                         },
                     ..
                 } => {
-                    if focus {
+                    if focus != CursorGrabMode::None {
                         input.register_input_event(virtual_code, state == ElementState::Pressed)
                     }
                 }
@@ -75,13 +81,13 @@ fn main() {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
-                if focus {
+                if focus != CursorGrabMode::None {
                     input.register_mouse_move(delta)
                 }
             }
 
             Event::MainEventsCleared => {
-                if focus {
+                if focus != CursorGrabMode::None {
                     camera.try_borrow_mut().unwrap().update();
                 }
                 content.maps[0].render(&camera.try_borrow_mut().unwrap());
