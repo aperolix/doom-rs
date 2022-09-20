@@ -83,18 +83,18 @@ impl WallModel {
         // Always bind stride after the buffer is bound
         pos_att.set_value(MaterialValue::FloatStride(Stride {
             count: 3,
-            stride: 6 * std::mem::size_of::<f32>(),
+            stride: 7 * std::mem::size_of::<f32>(),
             offset: 0,
         }));
         uv_att.set_value(MaterialValue::FloatStride(Stride {
-            count: 2,
-            stride: 6 * std::mem::size_of::<f32>(),
+            count: 3,
+            stride: 7 * std::mem::size_of::<f32>(),
             offset: 3 * std::mem::size_of::<f32>(),
         }));
         light_att.set_value(MaterialValue::FloatStride(Stride {
             count: 1,
-            stride: 6 * std::mem::size_of::<f32>(),
-            offset: 5 * std::mem::size_of::<f32>(),
+            stride: 7 * std::mem::size_of::<f32>(),
+            offset: 6 * std::mem::size_of::<f32>(),
         }));
     }
 
@@ -121,7 +121,7 @@ impl WallModel {
 
         unsafe {
             gl.ActiveTexture(gl::TEXTURE0);
-            gl.BindTexture(gl::TEXTURE_2D, self.texture);
+            gl.BindTexture(gl::TEXTURE_2D_ARRAY, self.texture);
             gl.DrawElements(
                 gl::TRIANGLES,
                 self.ibuffer.len() as i32,

@@ -116,7 +116,7 @@ impl FlatModel {
     }
 
     pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>) {
-        self.view_att.set_value(MaterialValue::Matrix(*view));
+        /*        self.view_att.set_value(MaterialValue::Matrix(*view));
         self.persp_att.set_value(MaterialValue::Matrix(*persp));
         self.img_att.set_value(MaterialValue::Int(0));
         self.light_att.set_value(MaterialValue::Float(self.light));
@@ -141,7 +141,7 @@ impl FlatModel {
                 self.height_att.bind();
 
                 gl.ActiveTexture(gl::TEXTURE0);
-                gl.BindTexture(gl::TEXTURE_2D, self.floor_texture);
+                gl.BindTexture(gl::TEXTURE_2D_ARRAY, self.floor_texture);
                 gl.DrawElements(
                     gl::TRIANGLES,
                     self.ibuffer.len() as i32,
@@ -170,6 +170,6 @@ impl FlatModel {
 
             gl.BindVertexArray(0);
             assert!(gl.GetError() == 0);
-        }
+        }*/
     }
 }

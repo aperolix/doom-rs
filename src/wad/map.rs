@@ -114,7 +114,7 @@ impl WadMap {
         wall_index: usize,
         line: (u16, u16),
         heights: (f32, f32),
-        texture_size: (f32, f32),
+        texture: &Texture,
         texture_offset: (f32, f32),
         light: f32,
     ) {
@@ -125,35 +125,41 @@ impl WadMap {
             - Vector3::new(start.x as f32, start.y as f32, 0.0f32);
         let length = line.magnitude();
 
-        let uv_offset = (
-            texture_offset.0 / texture_size.0,
-            texture_offset.1 / texture_size.1,
+        let uv_offset = Vector2::new(
+            texture_offset.0 / texture.width as f32,
+            texture_offset.1 / texture.height as f32,
         );
 
         let mut quad_buffer = vec![
             GVertex {
                 pos: Vector3::new(-start.x as f32, heights.0, start.y as f32),
-                uv: Vector2::new(uv_offset.0, uv_offset.1),
+                uv: Vector3::new(uv_offset.x, uv_offset.y, texture.depth as f32),
                 light,
             },
             GVertex {
                 pos: Vector3::new(-end.x as f32, heights.0, end.y as f32),
-                uv: Vector2::new(length / texture_size.0 + uv_offset.0, 0.0f32 + uv_offset.1),
+                uv: Vector3::new(
+                    length / texture.width as f32 + uv_offset.x,
+                    0.0f32 + uv_offset.y,
+                    texture.depth as f32,
+                ),
                 light,
             },
             GVertex {
                 pos: Vector3::new(-start.x as f32, heights.1, start.y as f32),
-                uv: Vector2::new(
-                    uv_offset.0,
-                    (heights.1 - heights.0) / texture_size.1 + uv_offset.1,
+                uv: Vector3::new(
+                    uv_offset.x,
+                    (heights.1 - heights.0) / texture.height as f32 + uv_offset.y,
+                    texture.depth as f32,
                 ),
                 light,
             },
             GVertex {
                 pos: Vector3::new(-end.x as f32, heights.1, end.y as f32),
-                uv: Vector2::new(
-                    length / texture_size.0 + uv_offset.0,
-                    (heights.1 - heights.0) / texture_size.1 + uv_offset.1,
+                uv: Vector3::new(
+                    length / texture.width as f32 + uv_offset.x,
+                    (heights.1 - heights.0) / texture.height as f32 + uv_offset.y,
+                    texture.depth as f32,
                 ),
                 light,
             },
@@ -175,31 +181,24 @@ impl WadMap {
     /// Prepare wall side rendering
     fn prepare_line_render(
         &self,
-        model_per_texture: &mut HashMap<String, usize>,
+        model_per_texture: &mut HashMap<u32, usize>,
         texture: &Texture,
         line: (u16, u16),
         heights: (f32, f32),
         texture_offset: (f32, f32),
         light: f32,
     ) {
-        let wall_index = if let Some(i) = model_per_texture.get(&texture.name) {
+        let wall_index = if let Some(i) = model_per_texture.get(&texture.id) {
             *i
         } else {
             self.walls.borrow_mut().push(WallModel::new(texture));
             let index = self.walls.borrow().len() - 1;
-            model_per_texture.insert(texture.name.clone(), index);
+            model_per_texture.insert(texture.id, index);
             index
         };
 
         // push vertices
-        self.add_quad(
-            wall_index,
-            line,
-            heights,
-            (texture.width as f32, texture.height as f32),
-            texture_offset,
-            light,
-        );
+        self.add_quad(wall_index, line, heights, texture, texture_offset, light);
     }
 
     /// Handle the wall model creation

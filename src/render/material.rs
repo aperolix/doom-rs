@@ -144,6 +144,7 @@ impl Material {
             gl.AttachShader(program, vs);
             gl.AttachShader(program, fs);
             gl.LinkProgram(program);
+            assert!(gl.GetError() == 0)
         }
 
         Material {

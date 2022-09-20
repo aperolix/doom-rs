@@ -14,7 +14,7 @@ static DOOMGL_INIT: Once = Once::new();
 #[derive(Debug, Copy, Clone)]
 pub struct GVertex {
     pub pos: Vector3<f32>,
-    pub uv: Vector2<f32>,
+    pub uv: Vector3<f32>,
     pub light: f32,
 }
 
@@ -98,6 +98,66 @@ impl DoomGl {
         }
 
         id[0]
+    }
+
+    pub fn fill_texture_2d_array(
+        &self,
+        texture_id: u32,
+        width: i32,
+        height: i32,
+        textures: &Vec<Vec<u8>>,
+    ) {
+        unsafe {
+            self.gl.BindTexture(gl::TEXTURE_2D_ARRAY, texture_id);
+            assert!(self.gl.GetError() == 0);
+            self.gl.TexStorage3D(
+                gl::TEXTURE_2D_ARRAY,
+                1,
+                gl::RGBA8,
+                width,
+                height,
+                textures.len() as i32,
+            );
+            assert!(self.gl.GetError() == 0);
+            for (i, texture) in textures.into_iter().enumerate() {
+                self.gl.TexSubImage3D(
+                    gl::TEXTURE_2D_ARRAY,
+                    0,
+                    0,
+                    0,
+                    i as i32,
+                    width,
+                    height,
+                    1,
+                    gl::RGBA,
+                    gl::UNSIGNED_BYTE,
+                    texture.as_ptr() as *const _,
+                );
+                assert!(self.gl.GetError() == 0);
+            }
+            self.gl
+                .TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+            assert!(self.gl.GetError() == 0);
+            self.gl
+                .TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+            assert!(self.gl.GetError() == 0);
+            self.gl.TexParameteri(
+                gl::TEXTURE_2D_ARRAY,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST as i32,
+            );
+            assert!(self.gl.GetError() == 0);
+            self.gl.TexParameteri(
+                gl::TEXTURE_2D_ARRAY,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST as i32,
+            );
+            assert!(self.gl.GetError() == 0);
+            self.gl.GenerateMipmap(gl::TEXTURE_2D_ARRAY);
+            assert!(self.gl.GetError() == 0);
+
+            self.gl.BindTexture(gl::TEXTURE_2D_ARRAY, 0);
+        }
     }
 
     pub fn fill_texture_with_buffer(

@@ -28,8 +28,8 @@ fn main() {
     let windowed_context = ContextBuilder::new().build_windowed(wb, &el).unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
     DoomGl::init(windowed_context.context());
-    let mut input = Input::new();
 
+    let mut input = Input::new();
     let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
 
     let content = Content::new(file);
