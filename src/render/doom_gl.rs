@@ -1,4 +1,4 @@
-use cgmath::{Vector2, Vector3};
+use cgmath::Vector3;
 use glutin::{self, PossiblyCurrent};
 use std::sync::Once;
 
@@ -119,7 +119,7 @@ impl DoomGl {
                 textures.len() as i32,
             );
             assert!(self.gl.GetError() == 0);
-            for (i, texture) in textures.into_iter().enumerate() {
+            for (i, texture) in textures.iter().enumerate() {
                 self.gl.TexSubImage3D(
                     gl::TEXTURE_2D_ARRAY,
                     0,
