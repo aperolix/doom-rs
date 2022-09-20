@@ -2,7 +2,10 @@ use std::rc::Rc;
 
 use cgmath::Matrix4;
 
-use crate::render::doom_gl::{gl, DoomGl};
+use crate::{
+    render::doom_gl::{gl, DoomGl},
+    sys::textures::Texture,
+};
 
 use super::material::{Material, MaterialParam, MaterialValue, Stride};
 
@@ -15,6 +18,8 @@ pub struct FlatModel {
     material: Material,
     ceil_texture: u32,
     floor_texture: u32,
+    ceil_depth: u32,
+    floor_depth: u32,
 
     height_att: Rc<MaterialParam>,
     light_att: Rc<MaterialParam>,
@@ -22,6 +27,7 @@ pub struct FlatModel {
     view_att: Rc<MaterialParam>,
     img_att: Rc<MaterialParam>,
     sky_att: Rc<MaterialParam>,
+    depth_att: Rc<MaterialParam>,
 
     vao: u32,
     ib: u32,
@@ -35,8 +41,8 @@ impl FlatModel {
     pub fn new(
         vbuffer: Vec<f32>,
         ibuffer: Vec<u16>,
-        ceil_texture: u32,
-        floor_texture: u32,
+        ceil_texture: Option<&Texture>,
+        floor_texture: &Texture,
     ) -> Self {
         unsafe { DoomGl::gl().Disable(gl::CULL_FACE) };
         let mut material = Material::new(FLAT_VERT_STR, FLAT_FRAG_STR);
@@ -47,6 +53,7 @@ impl FlatModel {
         let persp_att = MaterialParam::from_uniform("proj\0", &mut material);
         let img_att = MaterialParam::from_uniform("image\0", &mut material);
         let sky_att = MaterialParam::from_uniform("sky\0", &mut material);
+        let depth_att = MaterialParam::from_uniform("depth\0", &mut material);
 
         height_att.set_value(MaterialValue::Float(0.0));
 
@@ -60,14 +67,23 @@ impl FlatModel {
             sky_att,
             height_att,
             light_att,
+            depth_att,
             light: 1.0,
             ceil: 64.0,
             floor: 0.0,
             vao: 0,
             ib: 0,
             vb: 0,
-            ceil_texture,
-            floor_texture,
+            ceil_texture: match ceil_texture {
+                Some(t) => t.id,
+                _ => u32::MAX,
+            },
+            ceil_depth: match ceil_texture {
+                Some(t) => t.depth,
+                _ => u32::MAX,
+            },
+            floor_texture: floor_texture.id,
+            floor_depth: floor_texture.depth,
         }
     }
 
@@ -116,11 +132,12 @@ impl FlatModel {
     }
 
     pub fn render(&self, view: &Matrix4<f32>, persp: &Matrix4<f32>) {
-        /*        self.view_att.set_value(MaterialValue::Matrix(*view));
+        self.view_att.set_value(MaterialValue::Matrix(*view));
         self.persp_att.set_value(MaterialValue::Matrix(*persp));
         self.img_att.set_value(MaterialValue::Int(0));
         self.light_att.set_value(MaterialValue::Float(self.light));
         self.sky_att.set_value(MaterialValue::Int(0));
+        self.depth_att.set_value(MaterialValue::Float(0.0f32));
 
         let gl = DoomGl::gl();
         unsafe {
@@ -139,6 +156,9 @@ impl FlatModel {
             if self.floor_texture != u32::MAX {
                 self.height_att.set_value(MaterialValue::Float(self.floor));
                 self.height_att.bind();
+                self.depth_att
+                    .set_value(MaterialValue::Float(self.floor_depth as f32));
+                self.depth_att.bind();
 
                 gl.ActiveTexture(gl::TEXTURE0);
                 gl.BindTexture(gl::TEXTURE_2D_ARRAY, self.floor_texture);
@@ -157,9 +177,12 @@ impl FlatModel {
             if self.ceil_texture != u32::MAX {
                 self.height_att.set_value(MaterialValue::Float(self.ceil));
                 self.height_att.bind();
+                self.depth_att
+                    .set_value(MaterialValue::Float(self.ceil_depth as f32));
+                self.depth_att.bind();
 
                 gl.ActiveTexture(gl::TEXTURE0);
-                gl.BindTexture(gl::TEXTURE_2D, self.ceil_texture);
+                gl.BindTexture(gl::TEXTURE_2D_ARRAY, self.ceil_texture);
                 gl.DrawElements(
                     gl::TRIANGLES,
                     self.ibuffer.len() as i32,
@@ -170,6 +193,6 @@ impl FlatModel {
 
             gl.BindVertexArray(0);
             assert!(gl.GetError() == 0);
-        }*/
+        }
     }
 }

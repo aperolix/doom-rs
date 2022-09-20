@@ -577,11 +577,8 @@ impl WadMap {
             let mut model = FlatModel::new(
                 datas,
                 ib.iter().map(|i| *i as u16).collect(),
-                match ceil_texture {
-                    Some(t) => t.id,
-                    _ => u32::MAX,
-                },
-                floor_texture.id,
+                ceil_texture,
+                floor_texture,
             );
             model.light = sectors[sector_idx].lighting as f32 / 255.0;
             model.floor = sectors[sector_idx].floor as f32;

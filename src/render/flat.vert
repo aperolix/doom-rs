@@ -4,13 +4,14 @@ layout (location = 0) in vec2 position;
 
 out TVertexData {
 	float light;
-	vec2 uv;
+	vec3 uv;
 } outData;
 
 uniform mat4 view;
 uniform mat4 proj;
 uniform float height;
 uniform float light;
+uniform float depth;
 
 void main() {
     vec4 newPos = vec4(-position.x,  height, position.y, 1.0);
@@ -18,4 +19,5 @@ void main() {
     outData.light = light;
 	outData.uv.x = position.x / 64.0;
 	outData.uv.y = position.y / 64.0;
+	outData.uv.z = depth;
 }

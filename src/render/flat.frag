@@ -2,12 +2,12 @@
 
 in TVertexData {
 	float light;
-	vec2 uv;
+	vec3 uv;
 } inData;
 
 out vec4 fragColor;
 
-uniform sampler2D image;
+uniform sampler2DArray image;
 uniform int sky;
 
 void main() {
