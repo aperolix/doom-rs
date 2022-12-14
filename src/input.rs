@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use glutin::event::VirtualKeyCode;
+use winit::event::VirtualKeyCode;
 
 pub trait InputListener {
     fn on_input_change(&mut self, key: VirtualKeyCode, pressed: bool);

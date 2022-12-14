@@ -1,6 +1,6 @@
 use cgmath::Vector3;
-use glutin::{self, PossiblyCurrent};
-use std::sync::Once;
+use glutin::prelude::GlDisplay;
+use std::{ffi::CString, sync::Once};
 
 pub mod gl {
     #![allow(clippy::all)]
@@ -62,10 +62,13 @@ pub struct DoomGl {
 }
 
 impl DoomGl {
-    pub fn init(gl_context: &glutin::Context<PossiblyCurrent>) {
+    pub fn new<D: GlDisplay>(gl_display: &D) -> Self {
         unsafe {
             DOOMGL_INIT.call_once(|| {
-                let gl = gl::Gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
+                let gl = gl::Gl::load_with(|symbol| {
+                    let symbol = CString::new(symbol).unwrap();
+                    gl_display.get_proc_address(symbol.as_c_str()).cast()
+                });
 
                 DOOMGL = Some(DoomGl { gl });
             });
@@ -79,6 +82,8 @@ impl DoomGl {
             //gl.gl.PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
             DoomGl::gl().DebugMessageCallback(Some(gl_debug_message_callback), std::ptr::null());
             // use ptr to an object for
+
+            DoomGl { gl: DoomGl::gl() }
         }
     }
 

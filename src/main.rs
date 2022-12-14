@@ -4,50 +4,123 @@ mod render;
 mod sys;
 mod wad;
 use camera::Camera;
+use glutin::context::{ContextApi, ContextAttributesBuilder};
+use glutin::prelude::*;
+use glutin::surface::{SurfaceAttributesBuilder, SwapInterval};
 use glutin::{
+    config::{Config, ConfigTemplateBuilder},
+    display::GetGlDisplay,
+    prelude::{GlConfig, GlDisplay},
+    surface::{Surface, WindowSurface},
+};
+use glutin_winit::{self, DisplayBuilder};
+use input::Input;
+use raw_window_handle::HasRawWindowHandle;
+use render::doom_gl::DoomGl;
+use std::{cell::RefCell, num::NonZeroU32, path::Path, rc::Rc};
+use winit::{
     dpi::{PhysicalSize, Size},
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::{CursorGrabMode, WindowBuilder},
-    ContextBuilder,
+    event_loop::EventLoopBuilder,
+    window::{CursorGrabMode, Window, WindowBuilder},
 };
-use input::Input;
-use render::doom_gl::DoomGl;
-use std::{cell::RefCell, path::Path, rc::Rc};
 
 use sys::content::Content;
 use wad::file::WadFile;
 
 fn main() {
-    let el = EventLoop::new();
+    let event_loop = EventLoopBuilder::new().build();
     let size = Size::Physical(PhysicalSize::new(1680, 1050));
-    let wb = WindowBuilder::new()
-        .with_inner_size(size)
-        .with_resizable(false)
-        .with_title("DOOM");
-    let windowed_context = ContextBuilder::new().build_windowed(wb, &el).unwrap();
-    let windowed_context = unsafe { windowed_context.make_current().unwrap() };
-    DoomGl::init(windowed_context.context());
+    let wb = Some(
+        WindowBuilder::new()
+            .with_inner_size(size)
+            .with_resizable(false)
+            .with_title("DOOM")
+            .with_transparent(true),
+    );
+    let template = ConfigTemplateBuilder::new().with_alpha_size(8);
+    let display_builder = DisplayBuilder::new().with_window_builder(wb);
+    let (mut window, gl_config) = display_builder
+        .build(&event_loop, template, |configs| {
+            configs
+                .reduce(|accum, config| {
+                    let transparency_check = config.supports_transparency().unwrap_or(false)
+                        & !accum.supports_transparency().unwrap_or(false);
 
-    let mut input = Input::new();
-    let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
+                    if transparency_check || config.num_samples() > accum.num_samples() {
+                        config
+                    } else {
+                        accum
+                    }
+                })
+                .unwrap()
+        })
+        .unwrap();
 
-    let content = Content::new(file);
+    let raw_window_handle = window.as_ref().map(|window| window.raw_window_handle());
+    let gl_display = gl_config.display();
+    let context_attributes = ContextAttributesBuilder::new().build(raw_window_handle);
+    let fallback_context_attributes = ContextAttributesBuilder::new()
+        .with_context_api(ContextApi::Gles(None))
+        .build(raw_window_handle);
+    let mut not_current_gl_context = Some(unsafe {
+        gl_display
+            .create_context(&gl_config, &context_attributes)
+            .unwrap_or_else(|_| {
+                gl_display
+                    .create_context(&gl_config, &fallback_context_attributes)
+                    .expect("failed to create context")
+            })
+    });
 
-    let camera = Rc::new(RefCell::new(Camera::new()));
-
-    input.listeners.push(camera.clone());
-
+    let mut state = None;
+    let mut renderer = None;
     let mut focus = CursorGrabMode::Confined;
-    windowed_context.window().set_cursor_grab(focus).unwrap();
-    windowed_context.window().set_cursor_visible(false);
+    let mut input = Input::new();
+    let mut content = None;
+    let mut camera = None;
 
-    el.run(move |event, _, control_flow| {
-        //println!("{:?}", event);
-        *control_flow = ControlFlow::Poll;
-
+    event_loop.run(move |event, window_target, control_flow| {
+        control_flow.set_poll();
         match event {
-            Event::LoopDestroyed => (),
+            Event::Resumed => {
+                let window = window.take().unwrap_or_else(|| {
+                    let window_builder = WindowBuilder::new().with_transparent(true);
+                    glutin_winit::finalize_window(window_target, window_builder, &gl_config)
+                        .unwrap()
+                });
+
+                let gl_window = GlWindow::new(window, &gl_config);
+                gl_window.window.set_cursor_grab(focus).unwrap();
+                gl_window.window.set_cursor_visible(false);
+
+                // Make it current.
+                let gl_context = not_current_gl_context
+                    .take()
+                    .unwrap()
+                    .make_current(&gl_window.surface)
+                    .unwrap();
+
+                // The context needs to be current for the Renderer to set up shaders and
+                // buffers. It also performs function loading, which needs a current context on
+                // WGL.
+                renderer.get_or_insert_with(|| DoomGl::new(&gl_display));
+                let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
+                content = Some(Content::new(file));
+
+                camera = Some(Rc::new(RefCell::new(Camera::new())));
+                input.listeners.push(camera.as_mut().unwrap().clone());
+
+                // Try setting vsync.
+                if let Err(res) = gl_window
+                    .surface
+                    .set_swap_interval(&gl_context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
+                {
+                    eprintln!("Error setting vsync: {:?}", res);
+                }
+
+                assert!(state.replace((gl_context, gl_window)).is_none());
+            }
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::Focused(f) => {
                     focus = if f {
@@ -55,13 +128,14 @@ fn main() {
                     } else {
                         CursorGrabMode::None
                     };
-                    windowed_context.window().set_cursor_grab(focus).unwrap();
-                    windowed_context
-                        .window()
-                        .set_cursor_visible(focus != CursorGrabMode::None);
+                    if let Some((_, gl_window)) = &state {
+                        gl_window.window.set_cursor_grab(focus).unwrap();
+                        gl_window
+                            .window
+                            .set_cursor_visible(focus != CursorGrabMode::None);
+                    }
                 }
-                WindowEvent::Resized(physical_size) => windowed_context.resize(physical_size),
-                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::CloseRequested => control_flow.set_exit(),
                 WindowEvent::KeyboardInput {
                     input:
                         KeyboardInput {
@@ -85,15 +159,46 @@ fn main() {
                     input.register_mouse_move(delta)
                 }
             }
-
             Event::MainEventsCleared => {
-                if focus != CursorGrabMode::None {
-                    camera.try_borrow_mut().unwrap().update();
+                if let Some((gl_context, gl_window)) = &state {
+                    if focus != CursorGrabMode::None {
+                        camera.as_mut().unwrap().try_borrow_mut().unwrap().update();
+                    }
+
+                    content.as_mut().unwrap().maps[0]
+                        .render(&camera.as_mut().unwrap().try_borrow_mut().unwrap());
+                    gl_window.surface.swap_buffers(gl_context).unwrap();
                 }
-                content.maps[0].render(&camera.try_borrow_mut().unwrap());
-                windowed_context.swap_buffers().unwrap();
             }
             _ => (),
         }
     });
+}
+
+pub struct GlWindow {
+    // XXX the surface must be dropped before the window.
+    pub surface: Surface<WindowSurface>,
+
+    pub window: Window,
+}
+
+impl GlWindow {
+    pub fn new(window: Window, config: &Config) -> Self {
+        let (width, height): (u32, u32) = window.inner_size().into();
+        let raw_window_handle = window.raw_window_handle();
+        let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
+            raw_window_handle,
+            NonZeroU32::new(width).unwrap(),
+            NonZeroU32::new(height).unwrap(),
+        );
+
+        let surface = unsafe {
+            config
+                .display()
+                .create_window_surface(config, &attrs)
+                .unwrap()
+        };
+
+        Self { window, surface }
+    }
 }

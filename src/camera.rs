@@ -2,8 +2,8 @@ use crate::input::InputListener;
 use cgmath::{
     Deg, InnerSpace, Matrix4, Point3, Quaternion, Rotation, Rotation3, Vector2, Vector3, Zero,
 };
-use glutin::event::VirtualKeyCode;
 use std::time::Instant;
+use winit::event::VirtualKeyCode;
 
 pub struct Camera {
     pub persp: Matrix4<f32>,
