@@ -47,12 +47,7 @@ impl WadDirectory {
             panic!("Section name must be 8 char or less");
         }
         let name = &name.as_bytes()[0..name.len()];
-        for i in from_index..self.files.len() {
-            if self.files[i].name[0..name.len()].eq(name) {
-                return Some(i);
-            }
-        }
-        None
+        (from_index..self.files.len()).find(|&i| self.files[i].name[0..name.len()].eq(name))
     }
 
     pub fn get_lump(&self, index: usize) -> &FileLump {
@@ -61,11 +56,6 @@ impl WadDirectory {
 
     pub fn get_lump_index(&self, name: &str) -> Option<usize> {
         let name = &name.as_bytes()[0..name.len()];
-        for i in 0..self.files.len() {
-            if self.files[i].name[0..name.len()].eq(name) {
-                return Some(i);
-            }
-        }
-        None
+        (0..self.files.len()).find(|&i| self.files[i].name[0..name.len()].eq(name))
     }
 }
