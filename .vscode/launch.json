@@ -13,7 +13,7 @@
 				"rust"
 			],
 			"sourceMap": {
-				"/rustc/4b91a6ea7258a947e59c6522cd5898e7c0a6a88f": "${env:USERPROFILE}\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\lib\\rustlib\\src\\rust"
+				"/rustc/897e37553bba8b42751c67658967889d11ecd120": "${env:USERPROFILE}\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\lib\\rustlib\\src\\rust"
 			},
 			"cargo": {
 				"args": [
