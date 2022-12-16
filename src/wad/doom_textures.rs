@@ -58,7 +58,7 @@ fn read_texture_section(file: &WadFile, section: &str, patches: &Patches) -> Vec
 
             // Compose texture
             let mut buffer = Vec::new();
-            buffer.resize(4 * width as usize * height as usize, 1u8);
+            buffer.resize(4 * width * height, 1u8);
             for pinfo in patch_info.iter().take(texture_info[0].patch_count as usize) {
                 let patch = patches.get_patch(pinfo.patch as usize);
 
@@ -70,7 +70,7 @@ fn read_texture_section(file: &WadFile, section: &str, patches: &Patches) -> Vec
 
                         let index = (real_y * texture_info[0].width as i32 + real_x) * 4;
                         if index >= 0 && index < buffer.len() as i32 {
-                            let patch_index = (y as usize * patch.width + x as usize) * 4;
+                            let patch_index = (y * patch.width + x) * 4;
 
                             let dest_alpha = buffer[index as usize + 3];
                             let src_alpha = patch.image[patch_index + 3];
@@ -114,16 +114,16 @@ fn read_sky(patches: &Patches) -> Vec<DoomTexture> {
         if let Some(p) = patches.get_patch_by_name(&sky_name) {
             // Compose texture
             let mut buffer = Vec::new();
-            buffer.resize(4 * p.width as usize * p.height as usize, 1u8);
+            buffer.resize(4 * p.width * p.height, 1u8);
 
             for x in 0..p.width {
                 for y in 0..p.height {
                     let index = (y * p.width + x) * 4;
 
-                    buffer[index as usize] = p.image[index];
-                    buffer[index as usize + 1] = p.image[index + 1];
-                    buffer[index as usize + 2] = p.image[index + 2];
-                    buffer[index as usize + 3] = 255u8;
+                    buffer[index] = p.image[index];
+                    buffer[index + 1] = p.image[index + 1];
+                    buffer[index + 2] = p.image[index + 2];
+                    buffer[index + 3] = 255u8;
                 }
             }
             result.push(DoomTexture {

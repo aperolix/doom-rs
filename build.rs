@@ -8,7 +8,7 @@ fn main() {
 
     println!("cargo:rerun-if-changed=build.rs");
 
-    let mut file = File::create(&dest.join("gl_bindings.rs")).unwrap();
+    let mut file = File::create(dest.join("gl_bindings.rs")).unwrap();
     Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
         .write_bindings(gl_generator::StructGenerator, &mut file)
         .unwrap();

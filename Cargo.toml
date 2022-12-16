@@ -2,8 +2,14 @@
 name = "doom-rs"
 version = "0.1.0"
 authors = ["Aperolix <08.vodkas-rigole@icloud.com>"]
-edition = "2018"
+exclude = ["crates/"]
+edition = "2021"
 build = "build.rs"
+
+[workspace]
+members = [
+	"crates/*"
+] 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,6 +22,7 @@ cgmath="0.18"
 rand="0.8"
 bitflags="1.3"
 earcutr="0.3"
+doom_app={path="crates/doom_app", version="0.1.0"}
 
 [build-dependencies]
 gl_generator = "0.14"

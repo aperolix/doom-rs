@@ -70,8 +70,8 @@ impl InputListener for Camera {
         let smoothed = (self.last_delta + delta) / 2.0;
         self.last_delta = delta;
 
-        self.yaw -= Deg(smoothed.x as f32 * x_sensitivity);
-        self.pitch += Deg(smoothed.y as f32 * y_sensitivity);
+        self.yaw -= Deg(smoothed.x * x_sensitivity);
+        self.pitch += Deg(smoothed.y * y_sensitivity);
 
         if self.pitch > Deg(88.0) {
             self.pitch = Deg(88.0);

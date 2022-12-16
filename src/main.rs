@@ -6,12 +6,11 @@ mod wad;
 use camera::Camera;
 use glutin::context::{ContextApi, ContextAttributesBuilder};
 use glutin::prelude::*;
-use glutin::surface::{SurfaceAttributesBuilder, SwapInterval};
+use glutin::surface::SwapInterval;
 use glutin::{
-    config::{Config, ConfigTemplateBuilder},
+    config::ConfigTemplateBuilder,
     display::GetGlDisplay,
     prelude::{GlConfig, GlDisplay},
-    surface::{Surface, WindowSurface},
 };
 use glutin_winit::{self, DisplayBuilder};
 use input::Input;
@@ -22,16 +21,17 @@ use winit::{
     dpi::{PhysicalSize, Size},
     event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::EventLoopBuilder,
-    window::{CursorGrabMode, Window, WindowBuilder},
+    window::{CursorGrabMode, WindowBuilder},
 };
 
+use doom_app::GlWindow;
 use sys::content::Content;
 use wad::file::WadFile;
 
 fn main() {
     let event_loop = EventLoopBuilder::new().build();
     let size = Size::Physical(PhysicalSize::new(1680, 1050));
-    let wb = Some(
+    let window_builder = Some(
         WindowBuilder::new()
             .with_inner_size(size)
             .with_resizable(false)
@@ -39,7 +39,7 @@ fn main() {
             .with_transparent(true),
     );
     let template = ConfigTemplateBuilder::new().with_alpha_size(8);
-    let display_builder = DisplayBuilder::new().with_window_builder(wb);
+    let display_builder = DisplayBuilder::new().with_window_builder(window_builder);
     let (mut window, gl_config) = display_builder
         .build(&event_loop, template, |configs| {
             configs
@@ -173,32 +173,4 @@ fn main() {
             _ => (),
         }
     });
-}
-
-pub struct GlWindow {
-    // XXX the surface must be dropped before the window.
-    pub surface: Surface<WindowSurface>,
-
-    pub window: Window,
-}
-
-impl GlWindow {
-    pub fn new(window: Window, config: &Config) -> Self {
-        let (width, height): (u32, u32) = window.inner_size().into();
-        let raw_window_handle = window.raw_window_handle();
-        let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
-            raw_window_handle,
-            NonZeroU32::new(width).unwrap(),
-            NonZeroU32::new(height).unwrap(),
-        );
-
-        let surface = unsafe {
-            config
-                .display()
-                .create_window_surface(config, &attrs)
-                .unwrap()
-        };
-
-        Self { window, surface }
-    }
 }
