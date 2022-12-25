@@ -4,9 +4,10 @@ mod render;
 mod sys;
 mod wad;
 use camera::Camera;
-use glutin::context::{ContextApi, ContextAttributesBuilder};
+use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext};
 use glutin::prelude::*;
-use glutin::surface::SwapInterval;
+use glutin::surface::{Surface, WindowSurface};
+use glutin::surface::{SurfaceAttributesBuilder, SwapInterval};
 use glutin::{
     config::ConfigTemplateBuilder,
     display::GetGlDisplay,
@@ -14,163 +15,183 @@ use glutin::{
 };
 use glutin_winit::{self, DisplayBuilder};
 use input::Input;
+use kabal_app::window::{KabalApp, ProgramProc};
+use kabal_render::doom_gl::DoomGl;
 use raw_window_handle::HasRawWindowHandle;
-use render::doom_gl::DoomGl;
 use std::{cell::RefCell, num::NonZeroU32, path::Path, rc::Rc};
+use winit::event::VirtualKeyCode;
 use winit::{
-    dpi::{PhysicalSize, Size},
-    event::{DeviceEvent, ElementState, Event, KeyboardInput, WindowEvent},
-    event_loop::EventLoopBuilder,
+    event::ElementState,
     window::{CursorGrabMode, WindowBuilder},
 };
 
-use doom_app::GlWindow;
 use sys::content::Content;
 use wad::file::WadFile;
 
-fn main() {
-    let event_loop = EventLoopBuilder::new().build();
-    let size = Size::Physical(PhysicalSize::new(1680, 1050));
-    let window_builder = Some(
-        WindowBuilder::new()
-            .with_inner_size(size)
-            .with_resizable(false)
-            .with_title("DOOM")
-            .with_transparent(true),
-    );
-    let template = ConfigTemplateBuilder::new().with_alpha_size(8);
-    let display_builder = DisplayBuilder::new().with_window_builder(window_builder);
-    let (mut window, gl_config) = display_builder
-        .build(&event_loop, template, |configs| {
-            configs
-                .reduce(|accum, config| {
-                    let transparency_check = config.supports_transparency().unwrap_or(false)
-                        & !accum.supports_transparency().unwrap_or(false);
+const WINDOW_TITLE: &str = "DOOM";
+const WINDOW_WIDTH: u32 = 1680;
+const WINDOW_HEIGHT: u32 = 1050;
 
-                    if transparency_check || config.num_samples() > accum.num_samples() {
-                        config
-                    } else {
-                        accum
-                    }
-                })
-                .unwrap()
-        })
-        .unwrap();
+struct DoomApp {
+    window: winit::window::Window,
+    surface: Surface<WindowSurface>,
+    context: PossiblyCurrentContext,
 
-    let raw_window_handle = window.as_ref().map(|window| window.raw_window_handle());
-    let gl_display = gl_config.display();
-    let context_attributes = ContextAttributesBuilder::new().build(raw_window_handle);
-    let fallback_context_attributes = ContextAttributesBuilder::new()
-        .with_context_api(ContextApi::Gles(None))
-        .build(raw_window_handle);
-    let mut not_current_gl_context = Some(unsafe {
-        gl_display
-            .create_context(&gl_config, &context_attributes)
-            .unwrap_or_else(|_| {
-                gl_display
-                    .create_context(&gl_config, &fallback_context_attributes)
-                    .expect("failed to create context")
-            })
-    });
+    focused: bool,
 
-    let mut state = None;
-    let mut renderer = None;
-    let mut focus = CursorGrabMode::Confined;
-    let mut input = Input::new();
-    let mut content = None;
-    let mut camera = None;
+    content: Content,
+    camera: Rc<RefCell<Camera>>,
+    input: Input,
+}
 
-    event_loop.run(move |event, window_target, control_flow| {
-        control_flow.set_poll();
-        match event {
-            Event::Resumed => {
-                let window = window.take().unwrap_or_else(|| {
-                    let window_builder = WindowBuilder::new().with_transparent(true);
-                    glutin_winit::finalize_window(window_target, window_builder, &gl_config)
-                        .unwrap()
-                });
+impl DoomApp {
+    pub fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
+        let window_builder = Some(
+            WindowBuilder::new()
+                .with_inner_size(winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT))
+                .with_resizable(false)
+                .with_title(WINDOW_TITLE)
+                .with_transparent(true),
+        );
+        let template = ConfigTemplateBuilder::new().with_alpha_size(8);
+        let display_builder = DisplayBuilder::new().with_window_builder(window_builder);
+        let (window, gl_config) = display_builder
+            .build(event_loop, template, |configs| {
+                configs
+                    .reduce(|accum, config| {
+                        let transparency_check = config.supports_transparency().unwrap_or(false)
+                            & !accum.supports_transparency().unwrap_or(false);
 
-                let gl_window = GlWindow::new(window, &gl_config);
-                gl_window.window.set_cursor_grab(focus).unwrap();
-                gl_window.window.set_cursor_visible(false);
-
-                // Make it current.
-                let gl_context = not_current_gl_context
-                    .take()
+                        if transparency_check || config.num_samples() > accum.num_samples() {
+                            config
+                        } else {
+                            accum
+                        }
+                    })
                     .unwrap()
-                    .make_current(&gl_window.surface)
-                    .unwrap();
+            })
+            .unwrap();
 
-                // The context needs to be current for the Renderer to set up shaders and
-                // buffers. It also performs function loading, which needs a current context on
-                // WGL.
-                renderer.get_or_insert_with(|| DoomGl::new(&gl_display));
-                let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
-                content = Some(Content::new(file));
+        let raw_window_handle = window.as_ref().map(|window| window.raw_window_handle());
+        let gl_display = gl_config.display();
+        let context_attributes = ContextAttributesBuilder::new().build(raw_window_handle);
+        let fallback_context_attributes = ContextAttributesBuilder::new()
+            .with_context_api(ContextApi::Gles(None))
+            .build(raw_window_handle);
+        let mut not_current_gl_context = Some(unsafe {
+            gl_display
+                .create_context(&gl_config, &context_attributes)
+                .unwrap_or_else(|_| {
+                    gl_display
+                        .create_context(&gl_config, &fallback_context_attributes)
+                        .expect("failed to create context")
+                })
+        });
 
-                camera = Some(Rc::new(RefCell::new(Camera::new())));
-                input.listeners.push(camera.as_mut().unwrap().clone());
+        // Create GL window
+        let window = window.unwrap();
+        let (width, height): (u32, u32) = window.inner_size().into();
+        let raw_window_handle = window.raw_window_handle();
+        let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
+            raw_window_handle,
+            NonZeroU32::new(width).unwrap(),
+            NonZeroU32::new(height).unwrap(),
+        );
 
-                // Try setting vsync.
-                if let Err(res) = gl_window
-                    .surface
-                    .set_swap_interval(&gl_context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
-                {
-                    eprintln!("Error setting vsync: {:?}", res);
-                }
+        let surface = unsafe {
+            gl_config
+                .display()
+                .create_window_surface(&gl_config, &attrs)
+                .unwrap()
+        };
 
-                assert!(state.replace((gl_context, gl_window)).is_none());
-            }
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::Focused(f) => {
-                    focus = if f {
-                        CursorGrabMode::Confined
-                    } else {
-                        CursorGrabMode::None
-                    };
-                    if let Some((_, gl_window)) = &state {
-                        gl_window.window.set_cursor_grab(focus).unwrap();
-                        gl_window
-                            .window
-                            .set_cursor_visible(focus != CursorGrabMode::None);
-                    }
-                }
-                WindowEvent::CloseRequested => control_flow.set_exit(),
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(virtual_code),
-                            state,
-                            ..
-                        },
-                    ..
-                } => {
-                    if focus != CursorGrabMode::None {
-                        input.register_input_event(virtual_code, state == ElementState::Pressed)
-                    }
-                }
-                _ => (),
-            },
-            Event::DeviceEvent {
-                event: DeviceEvent::MouseMotion { delta },
-                ..
-            } => {
-                if focus != CursorGrabMode::None {
-                    input.register_mouse_move(delta)
-                }
-            }
-            Event::MainEventsCleared => {
-                if let Some((gl_context, gl_window)) = &state {
-                    if focus != CursorGrabMode::None {
-                        camera.as_mut().unwrap().try_borrow_mut().unwrap().update();
-                    }
+        // Make it current.
+        let context = not_current_gl_context
+            .take()
+            .unwrap()
+            .make_current(&surface)
+            .unwrap();
 
-                    content.as_mut().unwrap().maps[0]
-                        .render(&camera.as_mut().unwrap().try_borrow_mut().unwrap());
-                    gl_window.surface.swap_buffers(gl_context).unwrap();
-                }
-            }
-            _ => (),
+        window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
+        window.set_cursor_visible(false);
+
+        DoomGl::new(&gl_display);
+
+        let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
+        let content = Content::new(file);
+
+        let camera = Rc::new(RefCell::new(Camera::new()));
+        let mut input = Input::new();
+        input.listeners.push(camera.clone());
+
+        // Try setting vsync.
+        if let Err(res) =
+            surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
+        {
+            eprintln!("Error setting vsync: {:?}", res);
         }
-    });
+
+        DoomApp {
+            window,
+            surface,
+            context,
+            focused: true,
+            content,
+            camera,
+            input,
+        }
+    }
+}
+
+impl KabalApp for DoomApp {
+    fn run_frame(&mut self, _delta_time: f32) {
+        if self.focused {
+            self.camera.try_borrow_mut().unwrap().update();
+        }
+
+        self.content.maps[0].render(&self.camera.try_borrow_mut().unwrap());
+        self.surface.swap_buffers(&self.context).unwrap();
+    }
+
+    fn recreate_swapchain(&mut self) {}
+
+    fn cleanup_swapchain(&self) {}
+
+    fn wait_devide_idle(&mut self) {}
+
+    fn resize_framebuffer(&mut self) {}
+
+    fn window_ref(&self) -> &winit::window::Window {
+        &self.window
+    }
+
+    fn focus_changed(&mut self, focused: bool) {
+        let mode = if focused {
+            CursorGrabMode::Confined
+        } else {
+            CursorGrabMode::None
+        };
+        self.window.set_cursor_grab(mode).unwrap();
+        self.window.set_cursor_visible(!focused);
+    }
+
+    fn on_keyboard_event(&mut self, key_code: VirtualKeyCode, state: ElementState) {
+        if self.focused {
+            self.input
+                .register_input_event(key_code, state == ElementState::Pressed)
+        }
+    }
+
+    fn on_mouse_move(&mut self, x: f64, y: f64) {
+        if self.focused {
+            self.input.register_mouse_move((x, y));
+        }
+    }
+}
+
+fn main() {
+    let proc = ProgramProc::new();
+    let app = DoomApp::new(&proc.event_loop);
+
+    proc.main_loop(app);
 }

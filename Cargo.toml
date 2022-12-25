@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Aperolix <08.vodkas-rigole@icloud.com>"]
 exclude = ["crates/"]
 edition = "2021"
-build = "build.rs"
 
 [workspace]
 members = [
@@ -19,10 +18,7 @@ glutin-winit="0.2"
 winit="0.27"
 raw-window-handle="0.5"
 cgmath="0.18"
-rand="0.8"
 bitflags="1.3"
 earcutr="0.3"
-doom_app={path="crates/doom_app", version="0.1.0"}
-
-[build-dependencies]
-gl_generator = "0.14"
+kabal_app={path="crates/kabal_app", version="0.1.0"}
+kabal_render={path="crates/kabal_render", version="0.1.0"}

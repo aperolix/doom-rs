@@ -1,19 +1,14 @@
 use std::rc::Rc;
 
 use cgmath::Matrix4;
+use kabal_render::doom_gl::{gl, DoomGl};
 
 use crate::{
-    render::{
-        doom_gl::DoomGl,
-        material::{MaterialValue, Stride},
-    },
+    render::material::{MaterialValue, Stride},
     sys::textures::Texture,
 };
 
-use super::{
-    doom_gl::gl,
-    material::{Material, MaterialParam},
-};
+use super::material::{Material, MaterialParam};
 
 pub struct WallModel {
     ibuffer: Vec<u16>,

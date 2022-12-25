@@ -1,11 +1,9 @@
 use std::rc::Rc;
 
 use cgmath::Matrix4;
+use kabal_render::doom_gl::{gl, DoomGl};
 
-use crate::{
-    render::doom_gl::{gl, DoomGl},
-    sys::textures::Texture,
-};
+use crate::sys::textures::Texture;
 
 use super::material::{Material, MaterialParam, MaterialValue, Stride};
 

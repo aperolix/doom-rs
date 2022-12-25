@@ -1,0 +1,8 @@
+[package]
+name="kabal_core"
+version="0.1.0"
+edition="2021"
+description="Core code for Kabal engine"
+publish = false
+
+[dependencies]

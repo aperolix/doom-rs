@@ -3,11 +3,7 @@ use std::{cell::RefCell, collections::HashMap, str::FromStr};
 
 use crate::{
     camera::Camera,
-    render::{
-        doom_gl::{gl, DoomGl, GVertex},
-        flat_model::FlatModel,
-        wall_model::WallModel,
-    },
+    render::{flat_model::FlatModel, wall_model::WallModel},
     sys::textures::Texture,
 };
 
@@ -16,6 +12,7 @@ use crate::sys::content::Content;
 
 use bitflags::bitflags;
 use cgmath::{AbsDiffEq, InnerSpace, Matrix4, Vector2, Vector3};
+use kabal_render::doom_gl::{gl, DoomGl, GVertex};
 
 bitflags! {
     struct LinedefFlags: i16 {

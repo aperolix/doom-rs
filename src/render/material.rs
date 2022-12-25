@@ -1,6 +1,6 @@
 use cgmath::{BaseNum, Matrix4};
+use kabal_render::doom_gl::{gl, DoomGl};
 
-use super::doom_gl::{gl, DoomGl};
 use std::cell::Cell;
 use std::rc::Rc;
 

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{render::doom_gl::DoomGl, wad::doom_textures::DoomTextures};
+use kabal_render::doom_gl::DoomGl;
+
+use crate::wad::doom_textures::DoomTextures;
 
 pub struct Texture {
     pub name: String,
