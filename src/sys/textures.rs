@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use kabal_render::doom_gl::DoomGl;
+use kabal_render::opengl::OpenGl;
 
 use crate::wad::doom_textures::DoomTextures;
 
@@ -18,7 +18,7 @@ pub struct Textures {
 
 impl Textures {
     pub fn new(doom_textures: DoomTextures) -> Self {
-        let gl = DoomGl::get();
+        let gl = OpenGl::get();
 
         // Convert doom textures to multiple textures of 1024x1024
         let mut textures = Vec::new();

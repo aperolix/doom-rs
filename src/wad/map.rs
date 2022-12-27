@@ -12,7 +12,7 @@ use crate::sys::content::Content;
 
 use bitflags::bitflags;
 use cgmath::{AbsDiffEq, InnerSpace, Matrix4, Vector2, Vector3};
-use kabal_render::doom_gl::{gl, DoomGl, GVertex};
+use kabal_render::opengl::{gl, GVertex, OpenGl};
 
 bitflags! {
     struct LinedefFlags: i16 {
@@ -409,7 +409,7 @@ impl WadMap {
 
         let mut vb = unsafe { std::mem::zeroed() };
         unsafe {
-            let gl = DoomGl::gl();
+            let gl = OpenGl::gl();
             gl.GenBuffers(1, &mut vb);
             assert!(gl.GetError() == 0);
             gl.BindBuffer(gl::ARRAY_BUFFER, vb);
@@ -433,7 +433,7 @@ impl WadMap {
     /// Render the map
     pub fn render(&self, camera: &Camera) {
         unsafe {
-            let gl = DoomGl::gl();
+            let gl = OpenGl::gl();
             gl.ClearColor(0.5, 0.0, 0.5, 1.0);
             gl.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 

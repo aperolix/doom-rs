@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use cgmath::Matrix4;
-use kabal_render::doom_gl::{gl, DoomGl};
+use kabal_render::opengl::{gl, OpenGl};
 
 use crate::{
     render::material::{MaterialValue, Stride},
@@ -27,7 +27,7 @@ const WALL_VERT_STR: &str = include_str!("wall.vert");
 
 impl WallModel {
     pub fn new(texture: &Texture) -> Self {
-        unsafe { DoomGl::gl().Enable(gl::CULL_FACE) };
+        unsafe { OpenGl::gl().Enable(gl::CULL_FACE) };
         let mut material = Material::new(WALL_VERT_STR, WALL_FRAG_STR);
 
         let view_att = MaterialParam::from_uniform("view\0", &mut material);
@@ -52,7 +52,7 @@ impl WallModel {
         let mut vao = unsafe { std::mem::zeroed() };
 
         unsafe {
-            let gl = DoomGl::gl();
+            let gl = OpenGl::gl();
             // generate and bind the vao
             gl.GenVertexArrays(1, &mut vao);
             gl.BindVertexArray(vao);
@@ -103,7 +103,7 @@ impl WallModel {
         self.img_att.set_value(MaterialValue::Int(0));
         self.sky_att.set_value(MaterialValue::Int(0));
 
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         unsafe {
             gl.Enable(gl::CULL_FACE);
 
@@ -132,8 +132,8 @@ impl WallModel {
 impl Drop for WallModel {
     fn drop(&mut self) {
         unsafe {
-            DoomGl::gl().DeleteBuffers(1, &self.ib);
-            DoomGl::gl().DeleteVertexArrays(1, &self.vao);
+            OpenGl::gl().DeleteBuffers(1, &self.ib);
+            OpenGl::gl().DeleteVertexArrays(1, &self.vao);
         }
     }
 }

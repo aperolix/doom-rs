@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use cgmath::Matrix4;
-use kabal_render::doom_gl::{gl, DoomGl};
+use kabal_render::opengl::{gl, OpenGl};
 
 use crate::sys::textures::Texture;
 
@@ -42,7 +42,7 @@ impl FlatModel {
         ceil_texture: Option<&Texture>,
         floor_texture: &Texture,
     ) -> Self {
-        unsafe { DoomGl::gl().Disable(gl::CULL_FACE) };
+        unsafe { OpenGl::gl().Disable(gl::CULL_FACE) };
         let mut material = Material::new(FLAT_VERT_STR, FLAT_FRAG_STR);
 
         let light_att = MaterialParam::from_uniform("light\0", &mut material);
@@ -91,7 +91,7 @@ impl FlatModel {
         let mut vb = unsafe { std::mem::zeroed() };
 
         unsafe {
-            let gl = DoomGl::gl();
+            let gl = OpenGl::gl();
             gl.GenBuffers(1, &mut vb);
             gl.BindBuffer(gl::ARRAY_BUFFER, vb);
             gl.BufferData(
@@ -137,9 +137,9 @@ impl FlatModel {
         self.sky_att.set_value(MaterialValue::Int(0));
         self.depth_att.set_value(MaterialValue::Float(0.0f32));
 
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         unsafe {
-            DoomGl::gl().Disable(gl::CULL_FACE);
+            OpenGl::gl().Disable(gl::CULL_FACE);
 
             gl.BindVertexArray(self.vao);
             gl.BindBuffer(gl::ARRAY_BUFFER, self.vb);

@@ -1,1 +1,1 @@
-pub mod doom_gl;
+pub mod opengl;

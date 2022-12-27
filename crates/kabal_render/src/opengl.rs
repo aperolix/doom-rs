@@ -7,7 +7,7 @@ pub mod gl {
     include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
 }
 
-static mut DOOMGL: Option<DoomGl> = None;
+static mut DOOMGL: Option<OpenGl> = None;
 static DOOMGL_INIT: Once = Once::new();
 
 #[repr(C, packed)]
@@ -57,11 +57,11 @@ extern "system" fn gl_debug_message_callback(
 }
 
 #[derive(Clone)]
-pub struct DoomGl {
+pub struct OpenGl {
     gl: gl::Gl,
 }
 
-impl DoomGl {
+impl OpenGl {
     pub fn new<D: GlDisplay>(gl_display: &D) -> Self {
         unsafe {
             DOOMGL_INIT.call_once(|| {
@@ -70,29 +70,29 @@ impl DoomGl {
                     gl_display.get_proc_address(symbol.as_c_str()).cast()
                 });
 
-                DOOMGL = Some(DoomGl { gl });
+                DOOMGL = Some(OpenGl { gl });
             });
-            DoomGl::gl().Enable(gl::CULL_FACE);
-            DoomGl::gl().Enable(gl::DEPTH_TEST);
-            DoomGl::gl().DepthFunc(gl::LESS);
-            DoomGl::gl().FrontFace(gl::CCW);
+            OpenGl::gl().Enable(gl::CULL_FACE);
+            OpenGl::gl().Enable(gl::DEPTH_TEST);
+            OpenGl::gl().DepthFunc(gl::LESS);
+            OpenGl::gl().FrontFace(gl::CCW);
             //gl.Enable(gl::BLEND);
             //gl.BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
             //gl.gl.Disable(gl::CULL_FACE);
             //gl.gl.PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-            DoomGl::gl().DebugMessageCallback(Some(gl_debug_message_callback), std::ptr::null());
+            OpenGl::gl().DebugMessageCallback(Some(gl_debug_message_callback), std::ptr::null());
             // use ptr to an object for
 
-            DoomGl { gl: DoomGl::gl() }
+            OpenGl { gl: OpenGl::gl() }
         }
     }
 
-    pub fn get() -> DoomGl {
+    pub fn get() -> OpenGl {
         unsafe { DOOMGL.clone().expect("DoomGl not initialized.") }
     }
 
     pub fn gl() -> gl::Gl {
-        DoomGl::get().gl
+        OpenGl::get().gl
     }
 
     pub fn gen_texture_id(&self) -> u32 {

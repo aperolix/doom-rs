@@ -1,5 +1,5 @@
 use cgmath::{BaseNum, Matrix4};
-use kabal_render::doom_gl::{gl, DoomGl};
+use kabal_render::opengl::{gl, OpenGl};
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -47,7 +47,7 @@ impl MaterialParam {
                 } else {
                     s.offset as *const () as *const _
                 };
-                DoomGl::gl().VertexAttribPointer(
+                OpenGl::gl().VertexAttribPointer(
                     self.id as u32,
                     s.count as i32,
                     gl::FLOAT,
@@ -55,7 +55,7 @@ impl MaterialParam {
                     s.stride as i32,
                     pointer,
                 );
-                assert!(DoomGl::gl().GetError() == 0);
+                assert!(OpenGl::gl().GetError() == 0);
             }
         }
         self.value.set(value);
@@ -84,7 +84,7 @@ impl MaterialParam {
     }
 
     pub fn bind(&self) {
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         match self.value.get() {
             MaterialValue::Float(f) => unsafe {
                 gl.Uniform1f(self.id, f);
@@ -114,7 +114,7 @@ pub fn create_shader(content: &str, shader_type: gl::types::GLenum) -> u32 {
 
     let vs;
     unsafe {
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         vs = gl.CreateShader(shader_type);
         gl.ShaderSource(vs, 1, [content.as_ptr() as *const _].as_ptr(), &length);
         gl.CompileShader(vs);
@@ -138,7 +138,7 @@ impl Material {
         let vs = create_shader(vs, gl::VERTEX_SHADER);
         let fs = create_shader(fs, gl::FRAGMENT_SHADER);
 
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         let program = unsafe { gl.CreateProgram() };
         unsafe {
             gl.AttachShader(program, vs);
@@ -156,14 +156,14 @@ impl Material {
     }
 
     pub fn get_uniform_location(&self, name: &str) -> i32 {
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         let location = unsafe { gl.GetUniformLocation(self.program, name.as_ptr() as *const _) };
         unsafe { assert!(gl.GetError() == 0) };
         location
     }
 
     pub fn get_attrib_location(&self, name: &str) -> i32 {
-        let gl = DoomGl::gl();
+        let gl = OpenGl::gl();
         let location = unsafe { gl.GetAttribLocation(self.program, name.as_ptr() as *const _) };
         unsafe { assert!(gl.GetError() == 0) };
         location
@@ -174,7 +174,7 @@ impl Material {
     }
 
     pub fn bind(&self) {
-        unsafe { DoomGl::gl().UseProgram(self.program) };
+        unsafe { OpenGl::gl().UseProgram(self.program) };
 
         // Bind all current params
         for parm in &self.parms {
@@ -186,7 +186,7 @@ impl Material {
 impl Drop for Material {
     fn drop(&mut self) {
         unsafe {
-            let gl = DoomGl::gl();
+            let gl = OpenGl::gl();
             gl.DetachShader(self.program, self.vs);
             gl.DetachShader(self.program, self.fs);
             gl.DeleteProgram(self.program);

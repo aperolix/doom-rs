@@ -16,7 +16,7 @@ use glutin::{
 use glutin_winit::{self, DisplayBuilder};
 use input::Input;
 use kabal_app::window::{KabalApp, ProgramProc};
-use kabal_render::doom_gl::DoomGl;
+use kabal_render::opengl::OpenGl;
 use raw_window_handle::HasRawWindowHandle;
 use std::{cell::RefCell, num::NonZeroU32, path::Path, rc::Rc};
 use winit::event::VirtualKeyCode;
@@ -115,7 +115,7 @@ impl DoomApp {
         window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
         window.set_cursor_visible(false);
 
-        DoomGl::new(&gl_display);
+        OpenGl::new(&gl_display);
 
         let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
         let content = Content::new(file);
