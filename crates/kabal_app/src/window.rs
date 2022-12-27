@@ -86,7 +86,7 @@ impl ProgramProc {
                     let delta_time = frame_timer.delta_time();
                     app.run_frame(delta_time);
 
-                    println!("FPS: {}", frame_timer.fps());
+                    // println!("FPS: {}", frame_timer.fps());
 
                     frame_timer.tick();
                 }

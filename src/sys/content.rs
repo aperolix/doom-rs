@@ -1,26 +1,37 @@
+use std::path::Path;
+
 use super::textures::Textures;
 use crate::wad::doom_textures::DoomTextures;
 use crate::wad::file::WadFile;
 use crate::wad::map::WadMap;
 
 pub struct Content {
-    //pub textures: RefCell<Textures>,
-    pub maps: Vec<WadMap>,
+    map: Option<WadMap>,
     pub file: WadFile,
     textures: Textures,
 }
 
 impl Content {
-    pub fn new(file: WadFile) -> Self {
+    pub fn new(file_name: &Path) -> Self {
+        let file = WadFile::new(file_name).expect("File not found");
         let doom_textures = DoomTextures::new(&file);
 
-        let mut content = Content {
-            maps: Vec::new(),
+        Content {
+            map: None,
             file,
             textures: Textures::new(doom_textures),
-        };
-        content.maps.push(WadMap::new("E1M1", &content).unwrap());
-        content
+        }
+    }
+
+    pub fn load_map(&mut self, map_name: &str) {
+        let map = WadMap::new(map_name, self);
+        if map.is_ok() {
+            self.map = Some(map.unwrap());
+        }
+    }
+
+    pub fn get_map(&self) -> &Option<WadMap> {
+        &self.map
     }
 
     pub fn get_textures(&self) -> &Textures {

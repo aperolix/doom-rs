@@ -26,7 +26,6 @@ use winit::{
 };
 
 use sys::content::Content;
-use wad::file::WadFile;
 
 const WINDOW_TITLE: &str = "DOOM";
 const WINDOW_WIDTH: u32 = 1680;
@@ -42,6 +41,9 @@ struct DoomApp {
     content: Content,
     camera: Rc<RefCell<Camera>>,
     input: Input,
+
+    episode: u32,
+    mission: u32,
 }
 
 impl DoomApp {
@@ -117,8 +119,8 @@ impl DoomApp {
 
         OpenGl::new(&gl_display);
 
-        let file = WadFile::new(Path::new("base/doom.wad")).unwrap();
-        let content = Content::new(file);
+        let mut content = Content::new(Path::new("base/doom.wad"));
+        content.load_map("E1M1");
 
         let camera = Rc::new(RefCell::new(Camera::new()));
         let mut input = Input::new();
@@ -139,6 +141,8 @@ impl DoomApp {
             content,
             camera,
             input,
+            episode: 1,
+            mission: 1,
         }
     }
 }
@@ -149,8 +153,10 @@ impl KabalApp for DoomApp {
             self.camera.try_borrow_mut().unwrap().update();
         }
 
-        self.content.maps[0].render(&self.camera.try_borrow_mut().unwrap());
-        self.surface.swap_buffers(&self.context).unwrap();
+        if let Some(map) = self.content.get_map() {
+            map.render(&self.camera.try_borrow_mut().unwrap());
+            self.surface.swap_buffers(&self.context).unwrap();
+        }
     }
 
     fn recreate_swapchain(&mut self) {}
@@ -177,8 +183,58 @@ impl KabalApp for DoomApp {
 
     fn on_keyboard_event(&mut self, key_code: VirtualKeyCode, state: ElementState) {
         if self.focused {
-            self.input
-                .register_input_event(key_code, state == ElementState::Pressed)
+            let pressed = state == ElementState::Pressed;
+            let mut new_map = true;
+            match key_code {
+                VirtualKeyCode::F1 => {
+                    self.episode = 1;
+                }
+                VirtualKeyCode::F2 => {
+                    self.episode = 2;
+                }
+                VirtualKeyCode::F3 => {
+                    self.episode = 3;
+                }
+                VirtualKeyCode::F4 => {
+                    self.episode = 4;
+                }
+                VirtualKeyCode::Key1 => {
+                    self.mission = 1;
+                }
+                VirtualKeyCode::Key2 => {
+                    self.mission = 2;
+                }
+                VirtualKeyCode::Key3 => {
+                    self.mission = 3;
+                }
+                VirtualKeyCode::Key4 => {
+                    self.mission = 4;
+                }
+                VirtualKeyCode::Key5 => {
+                    self.mission = 5;
+                }
+                VirtualKeyCode::Key6 => {
+                    self.mission = 6;
+                }
+                VirtualKeyCode::Key7 => {
+                    self.mission = 7;
+                }
+                VirtualKeyCode::Key8 => {
+                    self.mission = 8;
+                }
+                VirtualKeyCode::Key9 => {
+                    self.mission = 9;
+                }
+                _ => {
+                    new_map = false;
+                    self.input.register_input_event(key_code, pressed);
+                }
+            }
+
+            if new_map {
+                self.content
+                    .load_map(format!("E{}M{}", self.episode, self.mission).as_str());
+            }
         }
     }
 
