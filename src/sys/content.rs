@@ -25,8 +25,8 @@ impl Content {
 
     pub fn load_map(&mut self, map_name: &str) {
         let map = WadMap::new(map_name, self);
-        if map.is_ok() {
-            self.map = Some(map.unwrap());
+        if let Ok(map) = map {
+            self.map = Some(map);
         }
     }
 

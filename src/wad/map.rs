@@ -571,18 +571,20 @@ impl WadMap {
                 )
                 .unwrap();
 
-            let mut model = FlatModel::new(
-                datas,
-                ib.iter().map(|i| *i as u16).collect(),
-                ceil_texture,
-                floor_texture,
-            );
-            model.light = sectors[sector_idx].lighting as f32 / 255.0;
-            model.floor = sectors[sector_idx].floor as f32;
-            model.ceil = sectors[sector_idx].ceiling as f32;
+            if let Ok(ib) = ib {
+                let mut model = FlatModel::new(
+                    datas,
+                    ib.iter().map(|i| *i as u16).collect(),
+                    ceil_texture,
+                    floor_texture,
+                );
+                model.light = sectors[sector_idx].lighting as f32 / 255.0;
+                model.floor = sectors[sector_idx].floor as f32;
+                model.ceil = sectors[sector_idx].ceiling as f32;
 
-            model.init();
-            flats.push(model);
+                model.init();
+                flats.push(model);
+            }
         }
 
         let map = WadMap {
