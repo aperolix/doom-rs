@@ -50,10 +50,7 @@ extern "system" fn gl_debug_message_callback(
     };
 
     let message = unsafe { std::ffi::CStr::from_ptr(message) };
-    println!(
-        "GLerror : type {} / sev {} / {:?}",
-        msg_type, msg_dev, message
-    );
+    println!("GLerror : type {msg_type} / sev {msg_dev} / {message:?}");
 }
 
 #[derive(Clone)]

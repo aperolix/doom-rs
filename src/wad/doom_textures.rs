@@ -110,7 +110,7 @@ fn read_sky(patches: &Patches) -> Vec<DoomTexture> {
     let mut sky_num = 1;
     let mut result = Vec::new();
     loop {
-        let sky_name = format!("SKY{}", sky_num);
+        let sky_name = format!("SKY{sky_num}");
         if let Some(p) = patches.get_patch_by_name(&sky_name) {
             // Compose texture
             let mut buffer = Vec::new();

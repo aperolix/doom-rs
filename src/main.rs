@@ -130,7 +130,7 @@ impl DoomApp {
         if let Err(res) =
             surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
         {
-            eprintln!("Error setting vsync: {:?}", res);
+            eprintln!("Error setting vsync: {res:?}");
         }
 
         DoomApp {
