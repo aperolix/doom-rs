@@ -35,72 +35,71 @@ fn read_texture_section(file: &WadFile, section: &str, patches: &Patches) -> Vec
 
     let mut result = Vec::new();
 
-    if let Some(section) = file.get_section(section) {
-        // Get count
-        let (_, count, _) = unsafe { section[..4].align_to::<i32>() };
-        let count = count[0] as usize;
+    let section = file.get_section(section);
 
-        // Get offset table
-        let (_, offsets, _) = unsafe { section[4..].align_to::<i32>() };
+    // Get count
+    let (_, count, _) = unsafe { section[..4].align_to::<i32>() };
+    let count = count[0] as usize;
 
-        for offset in offsets.iter().take(count) {
-            let offset = *offset as usize;
+    // Get offset table
+    let (_, offsets, _) = unsafe { section[4..].align_to::<i32>() };
 
-            // Get the texture header
-            let (_, texture_info, _) = unsafe { section[offset..].align_to::<TextureInfo>() };
+    for offset in offsets.iter().take(count) {
+        let offset = *offset as usize;
 
-            let width = texture_info[0].width as usize;
-            let height = texture_info[0].height as usize;
+        // Get the texture header
+        let (_, texture_info, _) = unsafe { section[offset..].align_to::<TextureInfo>() };
 
-            // Get the patch table
-            let offset = offset + std::mem::size_of::<TextureInfo>();
-            let (_, patch_info, _) = unsafe { section[offset..].align_to::<PatchInfo>() };
+        let width = texture_info[0].width as usize;
+        let height = texture_info[0].height as usize;
 
-            // Compose texture
-            let mut buffer = Vec::new();
-            buffer.resize(4 * width * height, 1u8);
-            for pinfo in patch_info.iter().take(texture_info[0].patch_count as usize) {
-                let patch = patches.get_patch(pinfo.patch as usize);
+        // Get the patch table
+        let offset = offset + std::mem::size_of::<TextureInfo>();
+        let (_, patch_info, _) = unsafe { section[offset..].align_to::<PatchInfo>() };
 
-                for x in 0..patch.width {
-                    for y in 0..patch.height {
-                        let real_x = pinfo.origin_x as i32 + x as i32;
-                        let real_y =
-                            texture_info[0].height as i32 - (pinfo.origin_y as i32 + y as i32) - 1;
+        // Compose texture
+        let mut buffer = Vec::new();
+        buffer.resize(4 * width * height, 1u8);
+        for pinfo in patch_info.iter().take(texture_info[0].patch_count as usize) {
+            let patch = patches.get_patch(pinfo.patch as usize);
 
-                        let index = (real_y * texture_info[0].width as i32 + real_x) * 4;
-                        if index >= 0 && index < buffer.len() as i32 {
-                            let patch_index = (y * patch.width + x) * 4;
+            for x in 0..patch.width {
+                for y in 0..patch.height {
+                    let real_x = pinfo.origin_x as i32 + x as i32;
+                    let real_y =
+                        texture_info[0].height as i32 - (pinfo.origin_y as i32 + y as i32) - 1;
 
-                            let dest_alpha = buffer[index as usize + 3];
-                            let src_alpha = patch.image[patch_index + 3];
+                    let index = (real_y * texture_info[0].width as i32 + real_x) * 4;
+                    if index >= 0 && index < buffer.len() as i32 {
+                        let patch_index = (y * patch.width + x) * 4;
 
-                            if src_alpha == 0 {
-                                // Don't rewrite above existing color
-                                if dest_alpha <= 1u8 {
-                                    buffer[index as usize + 3] = src_alpha;
-                                }
-                            } else {
-                                buffer[index as usize] = patch.image[patch_index];
-                                buffer[index as usize + 1] = patch.image[patch_index + 1];
-                                buffer[index as usize + 2] = patch.image[patch_index + 2];
-                                buffer[index as usize + 3] = 255u8;
+                        let dest_alpha = buffer[index as usize + 3];
+                        let src_alpha = patch.image[patch_index + 3];
+
+                        if src_alpha == 0 {
+                            // Don't rewrite above existing color
+                            if dest_alpha <= 1u8 {
+                                buffer[index as usize + 3] = src_alpha;
                             }
+                        } else {
+                            buffer[index as usize] = patch.image[patch_index];
+                            buffer[index as usize + 1] = patch.image[patch_index + 1];
+                            buffer[index as usize + 2] = patch.image[patch_index + 2];
+                            buffer[index as usize + 3] = 255u8;
                         }
                     }
                 }
             }
-
-            let name =
-                String::from_utf8(texture_info[0].name.to_ascii_uppercase().to_vec()).unwrap();
-
-            result.push(DoomTexture {
-                name,
-                width: width as i32,
-                height: height as i32,
-                buffer,
-            });
         }
+
+        let name = String::from_utf8(texture_info[0].name.to_ascii_uppercase().to_vec()).unwrap();
+
+        result.push(DoomTexture {
+            name,
+            width: width as i32,
+            height: height as i32,
+            buffer,
+        });
     }
 
     result
@@ -141,7 +140,7 @@ fn read_sky(patches: &Patches) -> Vec<DoomTexture> {
 }
 
 pub fn load_flat(file: &WadFile, name: &str) -> DoomTexture {
-    let section = file.get_section(name).unwrap();
+    let section = file.get_section(name);
 
     // Read palettes
     let playpal = PlayPal::new(file);

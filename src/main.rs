@@ -31,6 +31,7 @@ const WINDOW_TITLE: &str = "DOOM";
 const WINDOW_WIDTH: u32 = 1680;
 const WINDOW_HEIGHT: u32 = 1050;
 
+/// Struct representing the entire app
 struct DoomApp {
     window: winit::window::Window,
     surface: Surface<WindowSurface>,
@@ -47,7 +48,8 @@ struct DoomApp {
 }
 
 impl DoomApp {
-    pub fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
+    /// Create the application
+    fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
         let window_builder = Some(
             WindowBuilder::new()
                 .with_inner_size(winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -148,6 +150,8 @@ impl DoomApp {
 }
 
 impl KabalApp for DoomApp {
+    /// This is called each frame to update render & game
+    /// `delta_time` contain the elapsed time in seconds since last frame
     fn run_frame(&mut self, _delta_time: f32) {
         if self.focused {
             self.camera.try_borrow_mut().unwrap().update();
@@ -171,6 +175,7 @@ impl KabalApp for DoomApp {
         &self.window
     }
 
+    /// Called when windows change focus
     fn focus_changed(&mut self, focused: bool) {
         let mode = if focused {
             CursorGrabMode::Confined
@@ -181,6 +186,7 @@ impl KabalApp for DoomApp {
         self.window.set_cursor_visible(!focused);
     }
 
+    /// Called when user press/release keyboard keys
     fn on_keyboard_event(&mut self, key_code: VirtualKeyCode, state: ElementState) {
         if self.focused {
             let pressed = state == ElementState::Pressed;
@@ -238,6 +244,7 @@ impl KabalApp for DoomApp {
         }
     }
 
+    /// Called when mouse is moving
     fn on_mouse_move(&mut self, x: f64, y: f64) {
         if self.focused {
             self.input.register_mouse_move((x, y));
@@ -245,6 +252,8 @@ impl KabalApp for DoomApp {
     }
 }
 
+/// Entry point
+/// create the app and execute loop
 fn main() {
     let proc = ProgramProc::new();
     let app = DoomApp::new(&proc.event_loop);

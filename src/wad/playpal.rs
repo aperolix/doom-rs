@@ -22,11 +22,8 @@ pub struct PlayPal {
 
 impl PlayPal {
     pub fn new(file: &WadFile) -> Self {
-        if let Some(content) = file.get_section("PLAYPAL") {
-            let (_, body, _) = unsafe { content[..].align_to::<PlayPal>() };
-            body[0]
-        } else {
-            panic!("No PLAYPAL section found");
-        }
+        let content = file.get_section("PLAYPAL");
+        let (_, body, _) = unsafe { content[..].align_to::<PlayPal>() };
+        body[0]
     }
 }

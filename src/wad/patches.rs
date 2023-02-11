@@ -69,27 +69,23 @@ impl Patches {
         // Read palettes
         let playpal = PlayPal::new(file);
 
-        if let Some(content) = file.get_section("PNAMES") {
-            let (_, num_patches, _) = unsafe { content[0..4].align_to::<i32>() };
+        let content = file.get_section("PNAMES");
+        let (_, num_patches, _) = unsafe { content[0..4].align_to::<i32>() };
 
-            let (_, body, _) = unsafe { content[4..].align_to::<[u8; 8]>() };
+        let (_, body, _) = unsafe { content[4..].align_to::<[u8; 8]>() };
 
-            let mut patches = Vec::new();
-            for name in body.iter().take(num_patches[0] as usize) {
-                let mut name = String::from_utf8(name.to_vec()).unwrap();
-                name.make_ascii_uppercase();
+        let mut patches = Vec::new();
+        for name in body.iter().take(num_patches[0] as usize) {
+            let mut name = String::from_utf8(name.to_vec()).unwrap();
+            name.make_ascii_uppercase();
 
-                if let Some(image) = file.get_section(name.as_str()) {
-                    let mut patch = load_image(image, &playpal.palettes[0]);
-                    patch.name = name;
-                    patches.push(patch);
-                }
-            }
-
-            Patches { patches }
-        } else {
-            panic!("No PNAMES section found");
+            let image = file.get_section(name.as_str());
+            let mut patch = load_image(image.as_slice(), &playpal.palettes[0]);
+            patch.name = name;
+            patches.push(patch);
         }
+
+        Patches { patches }
     }
 
     pub fn get_patch(&self, index: usize) -> &Patch {

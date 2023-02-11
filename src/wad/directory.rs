@@ -1,4 +1,8 @@
-use std::ops::Range;
+use std::{
+    fs::File,
+    io::{BufReader, Read, Seek, SeekFrom},
+    mem,
+};
 
 use super::info::WadInfo;
 #[repr(C, packed)]
@@ -9,35 +13,28 @@ pub struct FileLump {
     pub name: [u8; 8],
 }
 
-impl FileLump {
-    pub fn range(&self) -> Range<usize> {
-        Range {
-            start: self.file_pos as usize,
-            end: self.file_pos as usize + self.size as usize,
-        }
-    }
-}
-
 pub struct WadDirectory {
     pub files: Vec<FileLump>,
 }
 
 impl WadDirectory {
-    pub fn new(content: &[u8]) -> Self {
-        let info = WadInfo::new(content);
+    pub fn new(reader: &mut BufReader<File>) -> Self {
+        let info = WadInfo::new(reader);
 
         let mut directory = WadDirectory {
             files: Vec::with_capacity(info.num_lumps as usize),
         };
 
-        let offset = info.into_table_ofs as usize;
+        reader
+            .seek(SeekFrom::Start(info.into_table_ofs as u64))
+            .unwrap();
 
-        let body = unsafe {
-            directory.files.set_len(info.num_lumps as usize);
-            let (_head, body, _tail) = content[offset..].align_to::<FileLump>();
-            body
-        };
-        directory.files.copy_from_slice(body);
+        for _ in 0..info.num_lumps {
+            let mut buffer = [0u8; mem::size_of::<FileLump>()];
+            reader.read_exact(&mut buffer).unwrap();
+            let (_, lump, _) = unsafe { buffer.align_to::<FileLump>() };
+            directory.files.push(lump[0]);
+        }
 
         directory
     }

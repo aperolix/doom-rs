@@ -8,42 +8,47 @@ use super::directory::WadDirectory;
 pub struct WadFile {
     pub directory: WadDirectory,
     pub reader: RefCell<BufReader<File>>,
-    content: Vec<u8>,
 }
 
 impl WadFile {
-    pub fn new(file_name: &Path) -> Result<Self, String> {
-        let mut file = match File::open(file_name) {
-            Ok(file) => file,
-            Err(e) => return Err(e.to_string()),
-        };
+    pub fn new(file_name: &Path) -> Self {
+        let mut file = File::open(file_name).expect("Cannot open WAD file");
 
-        let reader = RefCell::new(io::BufReader::new(file.try_clone().unwrap()));
         let mut content = Vec::new();
         file.read_to_end(&mut content).unwrap();
+        let mut reader = io::BufReader::new(file);
 
-        Ok(WadFile {
-            directory: WadDirectory::new(&content),
-            reader,
-            content,
-        })
+        WadFile {
+            directory: WadDirectory::new(&mut reader),
+            reader: RefCell::new(reader),
+        }
     }
 
-    pub fn get_section(&self, name: &str) -> Option<&[u8]> {
-        if let Some(index) = self.directory.find_section(name, 0) {
-            let lump = self.directory.get_lump(index);
-            return Some(&self.content[lump.range()]);
-        }
-        None
+    pub fn get_section(&self, name: &str) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        let index = self
+            .directory
+            .find_section(name, 0)
+            .expect("Couldn't find section");
+        let lump = self.directory.get_lump(index);
+        let mut reader = self.reader.borrow_mut();
+        reader
+            .seek(SeekFrom::Start(lump.file_pos as u64))
+            .expect("Couldn't read section");
+        buffer.resize(lump.size as usize, 0u8);
+        reader
+            .read_exact(&mut buffer)
+            .expect("Couldn't read section");
+
+        buffer
     }
 
     pub fn read_section<T: Copy>(&self, mapidx: usize, name: &str) -> Vec<T> {
         let index = self.directory.find_section(name, mapidx).unwrap();
         let lump = &self.directory.files[index];
-        self.reader
-            .borrow_mut()
-            .seek(SeekFrom::Start(lump.file_pos as u64))
-            .unwrap();
+
+        let mut reader = self.reader.borrow_mut();
+        reader.seek(SeekFrom::Start(lump.file_pos as u64)).unwrap();
 
         let count = lump.size as usize / mem::size_of::<T>();
 
@@ -51,7 +56,7 @@ impl WadFile {
         let mut buffer = Vec::new();
         buffer.resize(mem::size_of::<T>(), 0u8);
         for _ in 0..count {
-            if self.reader.borrow_mut().read_exact(&mut buffer).is_ok() {
+            if reader.read_exact(&mut buffer).is_ok() {
                 let (_, body, _) = unsafe { buffer.align_to::<T>() };
                 result.push(body[0]);
             }

@@ -13,7 +13,7 @@ pub struct Content {
 
 impl Content {
     pub fn new(file_name: &Path) -> Self {
-        let file = WadFile::new(file_name).expect("File not found");
+        let file = WadFile::new(file_name);
         let doom_textures = DoomTextures::new(&file);
 
         Content {

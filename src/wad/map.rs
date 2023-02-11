@@ -454,7 +454,7 @@ impl WadMap {
     }
 
     /// Load the map and prepare render
-    pub fn new(name: &str, content: &Content) -> Result<WadMap, String> {
+    pub fn new(name: &str, content: &mut Content) -> Result<WadMap, String> {
         let mapidx = match content.file.directory.find_section(name, 0) {
             Some(i) => i,
             None => return Err("Map not found".to_string()),
