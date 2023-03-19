@@ -18,7 +18,7 @@ glutin-winit="0.3"
 winit="0.28"
 raw-window-handle="0.5"
 cgmath="0.18"
-bitflags="1.3"
+bitflags="2.0"
 earcutr="0.4"
 kabal_app={path="crates/kabal_app", version="0.1.0"}
 kabal_render={path="crates/kabal_render", version="0.1.0"}

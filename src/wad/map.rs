@@ -15,6 +15,7 @@ use cgmath::{AbsDiffEq, InnerSpace, Matrix4, Vector2, Vector3};
 use kabal_render::opengl::{gl, GVertex, OpenGl};
 
 bitflags! {
+    #[derive(Clone, Copy, PartialEq, Debug)]
     struct LinedefFlags: i16 {
         const NONE = 0;
         const BLOCK_ALL = 0x0001;
