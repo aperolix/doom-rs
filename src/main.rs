@@ -119,7 +119,7 @@ impl DoomApp {
         window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
         window.set_cursor_visible(false);
 
-        OpenGl::new(&gl_display);
+        OpenGl::init(&gl_display);
 
         let mut content = Content::new(Path::new("base/doom.wad"));
         content.load_map("E1M1");

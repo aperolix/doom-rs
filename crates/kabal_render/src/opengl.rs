@@ -1,14 +1,13 @@
 use cgmath::Vector3;
 use glutin::prelude::GlDisplay;
-use std::{ffi::CString, sync::Once};
+use std::{ffi::CString, sync::OnceLock};
 
 pub mod gl {
     #![allow(clippy::all)]
     include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
 }
 
-static mut DOOMGL: Option<OpenGl> = None;
-static DOOMGL_INIT: Once = Once::new();
+static DOOMGL: OnceLock<OpenGl> = OnceLock::new();
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -58,38 +57,37 @@ pub struct OpenGl {
     gl: gl::Gl,
 }
 
-impl OpenGl {
-    pub fn new<D: GlDisplay>(gl_display: &D) -> Self {
-        unsafe {
-            DOOMGL_INIT.call_once(|| {
-                let gl = gl::Gl::load_with(|symbol| {
-                    let symbol = CString::new(symbol).unwrap();
-                    gl_display.get_proc_address(symbol.as_c_str()).cast()
-                });
+unsafe impl Sync for OpenGl {}
 
-                DOOMGL = Some(OpenGl { gl });
+impl OpenGl {
+    pub fn init<D: GlDisplay>(gl_display: &D) {
+        unsafe {
+            let gl = gl::Gl::load_with(|symbol| {
+                let symbol = CString::new(symbol).unwrap();
+                gl_display.get_proc_address(symbol.as_c_str()).cast()
             });
-            OpenGl::gl().Enable(gl::CULL_FACE);
-            OpenGl::gl().Enable(gl::DEPTH_TEST);
-            OpenGl::gl().DepthFunc(gl::LESS);
-            OpenGl::gl().FrontFace(gl::CCW);
+
+            gl.Enable(gl::CULL_FACE);
+            gl.Enable(gl::DEPTH_TEST);
+            gl.DepthFunc(gl::LESS);
+            gl.FrontFace(gl::CCW);
             //gl.Enable(gl::BLEND);
             //gl.BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
             //gl.gl.Disable(gl::CULL_FACE);
             //gl.gl.PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-            OpenGl::gl().DebugMessageCallback(Some(gl_debug_message_callback), std::ptr::null());
+            gl.DebugMessageCallback(Some(gl_debug_message_callback), std::ptr::null());
             // use ptr to an object for
 
-            OpenGl { gl: OpenGl::gl() }
+            let _ = DOOMGL.set(OpenGl { gl });
         }
     }
 
-    pub fn get() -> OpenGl {
-        unsafe { DOOMGL.clone().expect("DoomGl not initialized.") }
+    pub fn get() -> &'static OpenGl {
+        DOOMGL.get().unwrap()
     }
 
-    pub fn gl() -> gl::Gl {
-        OpenGl::get().gl
+    pub fn gl() -> &'static gl::Gl {
+        &OpenGl::get().gl
     }
 
     pub fn gen_texture_id(&self) -> u32 {
