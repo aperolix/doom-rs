@@ -21,9 +21,9 @@ pub fn init_window(
 /// Base trait for an app
 pub trait KabalApp {
     fn run_frame(&mut self, delta_time: f32);
-    fn recreate_swapchain(&mut self);
-    fn cleanup_swapchain(&self);
-    fn wait_devide_idle(&mut self);
+    fn recreate_swap_chain(&mut self);
+    fn cleanup_swap_chain(&self);
+    fn wait_device_idle(&mut self);
     fn resize_framebuffer(&mut self);
     fn focus_changed(&mut self, focused: bool);
     fn window_ref(&self) -> &winit::window::Window;
@@ -53,7 +53,7 @@ impl ProgramProc {
                 Event::WindowEvent { event, .. } => match event {
                     // This is called whenever the user close the window with the OS way
                     WindowEvent::CloseRequested => {
-                        app.wait_devide_idle();
+                        app.wait_device_idle();
                         control_flow.set_exit();
                     }
                     // User press any key on keyboard
@@ -66,7 +66,7 @@ impl ProgramProc {
                         match (virtual_keycode, state) {
                             // For now exit when escape is pressed, we may need something better
                             (Some(VirtualKeyCode::Escape), ElementState::Pressed) => {
-                                app.wait_devide_idle();
+                                app.wait_device_idle();
                                 control_flow.set_exit();
                             }
                             // Forward all other keys to the app
@@ -76,7 +76,7 @@ impl ProgramProc {
                     }
                     // Window is resized, let the render system be aware of it
                     WindowEvent::Resized(_new_size) => {
-                        app.wait_devide_idle();
+                        app.wait_device_idle();
                         app.resize_framebuffer();
                     }
                     // Changing focus, handle input loss, auto pause etc...
@@ -96,7 +96,7 @@ impl ProgramProc {
                     app.window_ref().request_redraw();
                 }
                 // This is where the game actually run
-                Event::RedrawRequested(_window_id) => {
+                Event::RedrawRequested(_) => {
                     let delta_time = frame_timer.delta_time();
                     app.run_frame(delta_time);
 
@@ -106,7 +106,7 @@ impl ProgramProc {
                 }
                 // Clean up game before exiting
                 Event::LoopDestroyed => {
-                    app.wait_devide_idle();
+                    app.wait_device_idle();
                 }
                 Event::Resumed => {}
                 _ => (),

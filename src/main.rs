@@ -20,6 +20,7 @@ use kabal_render::opengl::OpenGl;
 use raw_window_handle::HasRawWindowHandle;
 use std::{cell::RefCell, num::NonZeroU32, path::Path, rc::Rc};
 use winit::event::VirtualKeyCode;
+use winit::event_loop::EventLoop;
 use winit::{
     event::ElementState,
     window::{CursorGrabMode, WindowBuilder},
@@ -49,7 +50,7 @@ struct DoomApp {
 
 impl DoomApp {
     /// Create the application
-    fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Self {
+    fn new(event_loop: &EventLoop<()>) -> Self {
         let window_builder = Some(
             WindowBuilder::new()
                 .with_inner_size(winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -163,11 +164,11 @@ impl KabalApp for DoomApp {
         }
     }
 
-    fn recreate_swapchain(&mut self) {}
+    fn recreate_swap_chain(&mut self) {}
 
-    fn cleanup_swapchain(&self) {}
+    fn cleanup_swap_chain(&self) {}
 
-    fn wait_devide_idle(&mut self) {}
+    fn wait_device_idle(&mut self) {}
 
     fn resize_framebuffer(&mut self) {}
 
