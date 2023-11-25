@@ -11,9 +11,9 @@ members = ["crates/*"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glutin = "0.30"
-glutin-winit = "0.3"
-winit = "0.28"
+glutin = "0.31"
+glutin-winit = "0.4"
+winit = "0.29"
 raw-window-handle = "0.5"
 cgmath = "0.18"
 bitflags = "2.4.1"

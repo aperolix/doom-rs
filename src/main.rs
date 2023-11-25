@@ -19,10 +19,11 @@ use kabal_app::window::{KabalApp, ProgramProc};
 use kabal_render::opengl::OpenGl;
 use raw_window_handle::HasRawWindowHandle;
 use std::{cell::RefCell, num::NonZeroU32, path::Path, rc::Rc};
-use winit::event::VirtualKeyCode;
 use winit::event_loop::EventLoop;
+use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use winit::{
-    event::ElementState,
+    event::KeyEvent,
+    keyboard::{Key, NamedKey},
     window::{CursorGrabMode, WindowBuilder},
 };
 
@@ -188,53 +189,52 @@ impl KabalApp for DoomApp {
     }
 
     /// Called when user press/release keyboard keys
-    fn on_keyboard_event(&mut self, key_code: VirtualKeyCode, state: ElementState) {
+    fn on_keyboard_event(&mut self, key_event: &KeyEvent) {
         if self.focused {
-            let pressed = state == ElementState::Pressed;
             let mut new_map = true;
-            match key_code {
-                VirtualKeyCode::F1 => {
+            match key_event.key_without_modifiers().as_ref() {
+                Key::Named(NamedKey::F1) => {
                     self.episode = 1;
                 }
-                VirtualKeyCode::F2 => {
+                Key::Named(NamedKey::F2) => {
                     self.episode = 2;
                 }
-                VirtualKeyCode::F3 => {
+                Key::Named(NamedKey::F3) => {
                     self.episode = 3;
                 }
-                VirtualKeyCode::F4 => {
+                Key::Named(NamedKey::F4) => {
                     self.episode = 4;
                 }
-                VirtualKeyCode::Key1 => {
+                Key::Character("1") => {
                     self.mission = 1;
                 }
-                VirtualKeyCode::Key2 => {
+                Key::Character("2") => {
                     self.mission = 2;
                 }
-                VirtualKeyCode::Key3 => {
+                Key::Character("3") => {
                     self.mission = 3;
                 }
-                VirtualKeyCode::Key4 => {
+                Key::Character("4") => {
                     self.mission = 4;
                 }
-                VirtualKeyCode::Key5 => {
+                Key::Character("5") => {
                     self.mission = 5;
                 }
-                VirtualKeyCode::Key6 => {
+                Key::Character("6") => {
                     self.mission = 6;
                 }
-                VirtualKeyCode::Key7 => {
+                Key::Character("7") => {
                     self.mission = 7;
                 }
-                VirtualKeyCode::Key8 => {
+                Key::Character("8") => {
                     self.mission = 8;
                 }
-                VirtualKeyCode::Key9 => {
+                Key::Character("9") => {
                     self.mission = 9;
                 }
                 _ => {
                     new_map = false;
-                    self.input.register_input_event(key_code, pressed);
+                    self.input.register_input_event(&key_event);
                 }
             }
 
@@ -259,5 +259,5 @@ fn main() {
     let proc = ProgramProc::new();
     let app = DoomApp::new(&proc.event_loop);
 
-    proc.main_loop(app);
+    proc.main_loop(app).unwrap();
 }
