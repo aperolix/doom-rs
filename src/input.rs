@@ -1,14 +1,18 @@
 use std::{cell::RefCell, rc::Rc};
 
-use winit::event::VirtualKeyCode;
+use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+use winit::{
+    event::{ElementState, KeyEvent},
+    keyboard::Key,
+};
 
 pub trait InputListener {
-    fn on_input_change(&mut self, key: VirtualKeyCode, pressed: bool);
+    fn on_input_change(&mut self, key: Key, pressed: bool);
     fn on_mouse_move(&mut self, delta: (f64, f64));
 }
 
 pub struct Input {
-    pub pressed: Vec<VirtualKeyCode>,
+    pub pressed: Vec<Key>,
     pub listeners: Vec<Rc<RefCell<dyn InputListener>>>,
 }
 
@@ -19,15 +23,16 @@ impl Input {
             listeners: Vec::new(),
         }
     }
-    pub fn register_input_event(&mut self, key: VirtualKeyCode, pressed: bool) {
+    pub fn register_input_event(&mut self, key_event: &KeyEvent) {
         let mut index = 0;
-        let was_pressed = self.pressed.iter().any(|&i| {
+        let was_pressed = self.pressed.iter().any(|i| {
             index += 1;
-            i == key
+            i.cmp(&key_event.key_without_modifiers()).is_eq()
         });
+        let pressed = key_event.state == ElementState::Pressed;
         if pressed != was_pressed {
             if pressed {
-                self.pressed.push(key);
+                self.pressed.push(key_event.key_without_modifiers());
             } else {
                 self.pressed.remove(index - 1);
             }
@@ -37,7 +42,7 @@ impl Input {
                 listener
                     .try_borrow_mut()
                     .unwrap()
-                    .on_input_change(key, pressed)
+                    .on_input_change(key_event.key_without_modifiers(), pressed)
             });
         }
     }

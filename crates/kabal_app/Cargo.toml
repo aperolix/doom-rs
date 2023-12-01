@@ -1,14 +1,14 @@
 [package]
-name="kabal_app"
-version="0.1.0"
-edition="2021"
-description="Application base for Kabal engine"
+name = "kabal_app"
+version = "0.1.0"
+edition = "2021"
+description = "Application base for Kabal engine"
 publish = false
 
 [dependencies]
-glutin={version="0.30"}
-glutin-winit="0.3"
-winit="0.28"
-raw-window-handle="0.5"
-kabal_core={path="../kabal_core", version="0.1.0"}
-kabal_render={path="../kabal_render", version="0.1.0"}
+glutin = { version = "0.31" }
+glutin-winit = "0.4"
+winit = "0.29"
+raw-window-handle = "0.5"
+kabal_core = { path = "../kabal_core", version = "0.1.0" }
+kabal_render = { path = "../kabal_render", version = "0.1.0" }

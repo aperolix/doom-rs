@@ -3,7 +3,7 @@ use cgmath::{
     Deg, InnerSpace, Matrix4, Point3, Quaternion, Rotation, Rotation3, Vector2, Vector3, Zero,
 };
 use std::time::Instant;
-use winit::event::VirtualKeyCode;
+use winit::keyboard::{Key, NamedKey};
 
 pub struct Camera {
     pub persp: Matrix4<f32>,
@@ -46,14 +46,14 @@ impl Camera {
 }
 
 impl InputListener for Camera {
-    fn on_input_change(&mut self, key: VirtualKeyCode, pressed: bool) {
-        match key {
-            VirtualKeyCode::Z => self.movement.z = if pressed { 1.0 } else { 0.0 },
-            VirtualKeyCode::S => self.movement.z = if pressed { -1.0 } else { 0.0 },
-            VirtualKeyCode::Q => self.movement.x = if pressed { 1.0 } else { 0.0 },
-            VirtualKeyCode::D => self.movement.x = if pressed { -1.0 } else { 0.0 },
-            VirtualKeyCode::Space => self.movement.y = if pressed { 1.0 } else { 0.0 },
-            VirtualKeyCode::C => self.movement.y = if pressed { -1.0 } else { 0.0 },
+    fn on_input_change(&mut self, key: Key, pressed: bool) {
+        match key.as_ref() {
+            Key::Character("Z") => self.movement.z = if pressed { 1.0 } else { 0.0 },
+            Key::Character("S") => self.movement.z = if pressed { -1.0 } else { 0.0 },
+            Key::Character("Q") => self.movement.x = if pressed { 1.0 } else { 0.0 },
+            Key::Character("D") => self.movement.x = if pressed { -1.0 } else { 0.0 },
+            Key::Named(NamedKey::Space) => self.movement.y = if pressed { 1.0 } else { 0.0 },
+            Key::Character("C") => self.movement.y = if pressed { -1.0 } else { 0.0 },
 
             _ => (),
         }
