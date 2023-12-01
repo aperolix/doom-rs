@@ -2,3 +2,7 @@
 base/DOOM.WAD
 Cargo.lock
 flamegraph.svg
+/.idea/.gitignore
+/.idea/doom-rs.iml
+/.idea/modules.xml
+/.idea/vcs.xml
