@@ -48,12 +48,12 @@ impl Camera {
 impl InputListener for Camera {
     fn on_input_change(&mut self, key: Key, pressed: bool) {
         match key.as_ref() {
-            Key::Character("Z") => self.movement.z = if pressed { 1.0 } else { 0.0 },
-            Key::Character("S") => self.movement.z = if pressed { -1.0 } else { 0.0 },
-            Key::Character("Q") => self.movement.x = if pressed { 1.0 } else { 0.0 },
-            Key::Character("D") => self.movement.x = if pressed { -1.0 } else { 0.0 },
+            Key::Character("w") => self.movement.z = if pressed { 1.0 } else { 0.0 },
+            Key::Character("s") => self.movement.z = if pressed { -1.0 } else { 0.0 },
+            Key::Character("a") => self.movement.x = if pressed { 1.0 } else { 0.0 },
+            Key::Character("d") => self.movement.x = if pressed { -1.0 } else { 0.0 },
             Key::Named(NamedKey::Space) => self.movement.y = if pressed { 1.0 } else { 0.0 },
-            Key::Character("C") => self.movement.y = if pressed { -1.0 } else { 0.0 },
+            Key::Character("c") => self.movement.y = if pressed { -1.0 } else { 0.0 },
 
             _ => (),
         }

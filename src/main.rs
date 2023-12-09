@@ -234,7 +234,7 @@ impl KabalApp for DoomApp {
                 }
                 _ => {
                     new_map = false;
-                    self.input.register_input_event(&key_event);
+                    self.input.register_input_event(key_event);
                 }
             }
 

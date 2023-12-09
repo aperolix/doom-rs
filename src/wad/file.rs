@@ -53,8 +53,7 @@ impl WadFile {
         let count = lump.size as usize / mem::size_of::<T>();
 
         let mut result = Vec::new();
-        let mut buffer = Vec::new();
-        buffer.resize(mem::size_of::<T>(), 0u8);
+        let mut buffer = vec![0; mem::size_of::<T>()];
         for _ in 0..count {
             if reader.read_exact(&mut buffer).is_ok() {
                 let (_, body, _) = unsafe { buffer.align_to::<T>() };
